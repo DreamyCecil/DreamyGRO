@@ -1,0 +1,6 @@
+[submodule "DreamyUtilities"]
+	path = DreamyUtilities
+	url = https://github.com/DreamyCecil/DreamyUtilities.git
+[submodule "ZipLib"]
+	path = ZipLib
+	url = https://github.com/DreamyCecil/ZipLib.git
