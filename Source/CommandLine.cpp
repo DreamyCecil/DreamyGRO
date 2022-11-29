@@ -26,7 +26,7 @@
 
 // Argument descriptions
 const char *_astrArgDesc[] = {
-#if _PLATFORM_UNIX
+#if _DREAMY_UNIX
   ARG_ROOT   " : Root directory of some classic Serious Sam game (e.g. \"-r /usr/games/SeriousSam/\")",
 #else
   ARG_ROOT   " : Root directory of some classic Serious Sam game (e.g. \"-r C:/SeriousSam/\")",

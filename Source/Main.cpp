@@ -150,7 +150,7 @@ static bool DisplayFailedFiles(const Strings_t &astr, const Str_t &strError) {
 // Pause command line execution
 static void Pause(void) {
   if (_bPauseAtTheEnd) {
-    #if !_PLATFORM_UNIX
+    #if !_DREAMY_UNIX
       system("pause");
     #endif
   }
