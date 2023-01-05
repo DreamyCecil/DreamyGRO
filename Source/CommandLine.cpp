@@ -175,11 +175,13 @@ void ParseArguments(Strings_t &aArgs) {
   }
 
   // Relative path to the output GRO
-  #if DREAMY_WIN
-    if (_strGRO.find(':') == Str_t::npos) { // No disc with the colon (e.g. "C:")
+  #if !_DREAMY_UNIX
+    bool bRelative = (_strGRO.find(':') == Str_t::npos); // No disc with the colon (e.g. "C:")
   #else
-    if (_strGRO.find('/') != 0) { // Doesn't start with a slash
+    bool bRelative = (_strGRO.find('/') != 0); // Doesn't start with a slash
   #endif
+
+  if (bRelative) {
     _strGRO = _strRoot + _strGRO;
   }
 
