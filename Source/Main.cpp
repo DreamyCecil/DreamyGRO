@@ -325,9 +325,6 @@ int main(int ctArgs, char *astrArgs[]) {
       // No failed files
       std::cout << "\nAll files exist!\n";
     }
-
-    // Forced pause to be able to see the file list
-    _bPauseAtTheEnd = true;
   }
 
   Pause();

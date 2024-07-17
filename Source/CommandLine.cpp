@@ -264,6 +264,9 @@ void ParseArguments(Strings_t &aArgs) {
 
 // Build parameters from just a path to the world file
 void FromWorldPath(const CPath &strWorld) {
+  // Force the pause to be able to see the output if opening from a world file
+  _bPauseAtTheEnd = true;
+
   // Verify world file
   {
     CFileDevice d((_strRoot + strWorld).c_str());
