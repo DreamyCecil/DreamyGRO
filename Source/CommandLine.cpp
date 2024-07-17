@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 Dreamy Cecil
+/* Copyright (c) 2022-2024 Dreamy Cecil
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -44,6 +44,126 @@ const char *_astrArgDesc[] = {
   ARG_PAUSE  " : Pause program execution before closing the console application to be able to see the output",
 };
 
+static void ParseRoot(Strings_t::const_iterator &it, const Strings_t &aArgs) {
+  // Get next argument immediately
+  Strings_t::const_iterator itNext = it;
+
+  // Root has been already set
+  if (_strRoot != "") {
+    CMessageException::Throw("'%s' command cannot be used more than once!", ARG_ROOT);
+  }
+
+  // No root path
+  if (itNext == aArgs.end()) {
+    CMessageException::Throw("Expected a path to a game folder after '%s'!", ARG_ROOT);
+  }
+
+  // Set root path
+  _strRoot = *itNext;
+  ++it;
+
+  // Add another slash at the end
+  if (_strRoot.rfind('\\') != _strRoot.length() - 1) {
+    _strRoot += '/';
+  }
+};
+
+static void ParseOutput(Strings_t::const_iterator &it, const Strings_t &aArgs) {
+  // Get next argument immediately
+  Strings_t::const_iterator itNext = it;
+
+  // No output path
+  if (itNext == aArgs.end()) {
+    CMessageException::Throw("Expected a path to an output file after '%s'!", ARG_OUTPUT);
+  }
+
+  // Add world
+  _strGRO = *itNext;
+  ++it;
+};
+
+static void ParseWorld(Strings_t::const_iterator &it, const Strings_t &aArgs) {
+  // Get next argument immediately
+  Strings_t::const_iterator itNext = it;
+
+  // No world path
+  if (itNext == aArgs.end()) {
+    CMessageException::Throw("Expected a path to a world file after '%s'!", ARG_WORLD);
+  }
+
+  // Add relative path to the world
+  Str_t strWorld = *itNext;
+
+  _aWorlds.push_back(strWorld);
+  _aFiles.push_back(strWorld);
+
+  ++it;
+};
+
+static void ParseStoreFile(Strings_t::const_iterator &it, const Strings_t &aArgs) {
+  // Get next argument immediately
+  Strings_t::const_iterator itNext = it;
+
+  // No filename filter
+  if (itNext == aArgs.end()) {
+    CMessageException::Throw("Expected a filename filter '%s'!", ARG_STORE);
+  }
+
+  // Get filename filter
+  Str_t strExt = *itNext;
+  ++it;
+
+  // Add a period to the extension
+  if (strExt.find('.') != 0) {
+    strExt = "." + strExt;
+  }
+
+  // Add lowercase extension
+  ToLower(strExt);
+  _aStore.push_back(strExt);
+};
+
+static void ParseDependency(Strings_t &astrDependencies, Strings_t::const_iterator &it, const Strings_t &aArgs) {
+  // Get next argument immediately
+  Strings_t::const_iterator itNext = it;
+
+  // No file path
+  if (itNext == aArgs.end()) {
+    CMessageException::Throw("Expected a path to a file after '%s'!", ARG_DEPEND);
+  }
+
+  // Add dependency file
+  astrDependencies.push_back(*itNext);
+  ++it;
+};
+
+static void ParseFlag(Strings_t::const_iterator &it, const Strings_t &aArgs) {
+  // Get next argument immediately
+  Strings_t::const_iterator itNext = it;
+
+  // No flags
+  if (itNext == aArgs.end()) {
+    CMessageException::Throw("Expected flags after '%s'!", ARG_FLAGS);
+  }
+
+  // Add specific flag
+  Str_t strFlag = *itNext;
+  ToLower(strFlag);
+  ++it;
+
+  if (strFlag == "ssr") {
+    _iFlags |= SCAN_SSR;
+  } else if (strFlag == "ini") {
+    _iFlags |= SCAN_INI;
+  } else if (strFlag == "ogg") {
+    _iFlags |= SCAN_OGG;
+  } else if (strFlag == "dep") {
+    _iFlags |= SCAN_DEP;
+  } else if (strFlag == "gro") {
+    _iFlags |= SCAN_GRO;
+  }
+};
+
 // Parse command line arguments
 void ParseArguments(Strings_t &aArgs) {
   // Dependency files and GROs
@@ -55,104 +175,23 @@ void ParseArguments(Strings_t &aArgs) {
     // Get the string and advance the argument
     const Str_t &str = *(it++);
 
-    // Get next argument immediately
-    Strings_t::const_iterator itNext = it;
-    
     if (str == ARG_ROOT) {
-      // Root has been already set
-      if (_strRoot != "") {
-        CMessageException::Throw("'%s' command cannot be used more than once!", ARG_ROOT);
-      }
-
-      // No root path
-      if (itNext == aArgs.end()) {
-        CMessageException::Throw("Expected a path to a game folder after '%s'!", ARG_ROOT);
-      }
-
-      // Set root path
-      _strRoot = *itNext;
-      ++it;
-
-      // Add another slash at the end
-      if (_strRoot.rfind('\\') != _strRoot.length() - 1) {
-        _strRoot += '/';
-      }
+      ParseRoot(it, aArgs);
 
     } else if (str == ARG_OUTPUT) {
-      // No output path
-      if (itNext == aArgs.end()) {
-        CMessageException::Throw("Expected a path to an output file after '%s'!", ARG_OUTPUT);
-      }
-
-      // Add world
-      _strGRO = *itNext;
-      ++it;
+      ParseOutput(it, aArgs);
 
     } else if (str == ARG_WORLD) {
-      // No world path
-      if (itNext == aArgs.end()) {
-        CMessageException::Throw("Expected a path to a world file after '%s'!", ARG_WORLD);
-      }
+      ParseWorld(it, aArgs);
 
-      // Add world
-      Str_t strWorld = *itNext;
-      _aWorlds.push_back(strWorld);
-      ++it;
-
-      // Add to the files
-      AddFile(strWorld);
-      
     } else if (str == ARG_STORE) {
-      // No filename filter
-      if (itNext == aArgs.end()) {
-        CMessageException::Throw("Expected a filename filter '%s'!", ARG_STORE);
-      }
+      ParseStoreFile(it, aArgs);
 
-      // Get filename filter
-      Str_t strExt = *itNext;
-      ++it;
-
-      // Add a period to the extension
-      if (strExt.find('.') != 0) {
-        strExt = "." + strExt;
-      }
-
-      // Add lowercase extension
-      ToLower(strExt);
-      _aStore.push_back(strExt);
-      
     } else if (str == ARG_DEPEND) {
-      // No file path
-      if (itNext == aArgs.end()) {
-        CMessageException::Throw("Expected a path to a file after '%s'!", ARG_DEPEND);
-      }
-      
-      // Add dependency file
-      astrDependencies.push_back(*itNext);
-      ++it;
-      
-    } else if (str == ARG_FLAGS) {
-      // No flags
-      if (itNext == aArgs.end()) {
-        CMessageException::Throw("Expected flags after '%s'!", ARG_FLAGS);
-      }
-      
-      // Add specific flag
-      Str_t strFlag = *itNext;
-      ToLower(strFlag);
-      ++it;
+      ParseDependency(astrDependencies, it, aArgs);
 
-      if (strFlag == "ssr") {
-        _iFlags |= SCAN_SSR;
-      } else if (strFlag == "ini") {
-        _iFlags |= SCAN_INI;
-      } else if (strFlag == "ogg") {
-        _iFlags |= SCAN_OGG;
-      } else if (strFlag == "dep") {
-        _iFlags |= SCAN_DEP;
-      } else if (strFlag == "gro") {
-        _iFlags |= SCAN_GRO;
-      }
+    } else if (str == ARG_FLAGS) {
+      ParseFlag(it, aArgs);
 
     } else if (str == ARG_PAUSE) {
       // Pause at the end of execution
@@ -229,7 +268,7 @@ void FromWorldPath(const CPath &strWorld) {
   {
     CFileDevice d((_strRoot + strWorld).c_str());
     d.Open(IReadWriteDevice::OM_READONLY);
-  
+
     CDataStream strm(&d);
     VerifyWorldFile(strm);
   }
@@ -248,7 +287,7 @@ void FromWorldPath(const CPath &strWorld) {
   if (ConsoleYN("Show world dependencies instead of packing?", false)) {
     _iFlags |= SCAN_DEP;
   }
-  
+
   if (!OnlyDep()) {
     Str_t strCustomGRO = ConsoleInput("Enter output GRO file (blank for automatic): ");
 
@@ -297,7 +336,7 @@ void AutoIgnoreGames(bool bFromWorld) {
     IgnoreGRO("SE1_10.gro");
 
   // Ignore TSE resources
-  } else if (FileExists((_strRoot + "SE1_00.gro").c_str())) {
+  } else if (FileExists(_strRoot + "SE1_00.gro")) {
     std::cout << "\nDetected GRO files from The Second Encounter...\n";
 
     IgnoreGRO("SE1_00.gro");

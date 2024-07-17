@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 Dreamy Cecil
+/* Copyright (c) 2022-2024 Dreamy Cecil
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,15 +21,6 @@
 
 #include "Main.h"
 #include "DictionaryReader.h"
-
-// Dependency counter
-static s32 _ctDepend = 0;
-
-// Count one file
-static void CountFile(const Str_t &strFilename) {
-  ++_ctDepend;
-  std::cout << _ctDepend << ". " << strFilename << '\n';
-};
 
 // Fix filename if it's improper
 static void FixFilename(Str_t &strFilename) {
@@ -67,8 +58,131 @@ static void FixFilename(Str_t &strFilename) {
   strFilename = strFixed;
 };
 
-// Scan the dictionary and extract filenames that aren't in existing dependencies
-void ScanDictionary(CDataStream &strm) {
+// Add extra files with MDL
+static void AddExtrasWithMDL(const CPath &strFilename) {
+  // Pack INI configs for models
+  if (PackINI()) {
+    AddFile(strFilename.RemoveExt() + ".ini");
+  }
+};
+
+// Add extra files with TEX
+static void AddExtrasWithTEX(const Str_t &strTextureFile) {
+  // Pack base textures with FX textures
+  CFileDevice dTex(strTextureFile.c_str());
+  if (!dTex.Open(IReadWriteDevice::OM_READONLY)) return;
+
+  // Skip texture version and data with 6 values (including two chunks)
+  CDataStream strmTex(&dTex);
+  strmTex.Seek(36);
+
+  // Make sure that FX texture is written
+  if (strmTex.Peek(4) != "FXDT") return;
+
+  // Skip to the end of the texture
+  strmTex.Seek(strmTex.Device()->Size() - 1);
+
+  s32 ctChars = 0;
+
+  // Go backwards until the null character
+  // 56 is the fixed amount of bytes unrelated to the base texture path
+  while (strmTex.Pos() > 56)
+  {
+    c8 cByte;
+    dTex.Peek(&cByte, 1);
+
+    // Encountered a null character
+    if (cByte == '\x00') {
+      // Skip it
+      strmTex.Skip(1);
+      break;
+    }
+
+    // Move backward
+    strmTex.Seek(strmTex.Pos() - 1);
+    ++ctChars;
+  }
+
+  // No characters
+  if (ctChars == 0) return;
+
+  // Extract a string from the current position to the end of file
+  CByteArray baBaseTex = strmTex.Read(ctChars);
+
+  // Read base texture file
+  Str_t strBaseTex = baBaseTex.ConstData();
+  FixFilename(strBaseTex);
+
+  // Check if the file already exists in the list of dependencies
+  Str_t strCheckTex = strBaseTex;
+  ToLower(strCheckTex);
+
+  // Proceed only if it's not there
+  if (InDepends(strCheckTex)) return;
+
+  bool bAdd = true;
+
+  if (IsRev()) {
+    // Try with different directories
+    ReplaceRevDirs(strCheckTex);
+    bAdd = !InDepends(strCheckTex);
+
+    // Try replacing spaces
+    if (bAdd) {
+      ReplaceSpaces(strCheckTex);
+      bAdd = !InDepends(strCheckTex);
+    }
+  }
+
+  // Add base texture file
+  if (bAdd) AddFile(strBaseTex);
+};
+
+// Add a specific file only if it exists and it's not in any lists of dependencies
+static void TryToAddFile(const CPath &strFilename) {
+  // Check if the file already exists in the list of dependencies
+  CPath strCheckFile = strFilename;
+  ToLower(strCheckFile);
+
+  // Skip if already in there
+  if (InDepends(strCheckFile)) return;
+
+  // Try with OGG if no MP3
+  if (PackOGG() && strCheckFile.GetFileExt() == ".mp3") {
+    strCheckFile = strCheckFile.RemoveExt() + ".ogg";
+
+    // OGG is present instead of MP3
+    if (InDepends(strCheckFile)) return;
+  }
+
+  if (IsRev()) {
+    // Try with different directories
+    ReplaceRevDirs(strCheckFile);
+    if (InDepends(strCheckFile)) return;
+
+    // Try replacing spaces
+    ReplaceSpaces(strCheckFile);
+    if (InDepends(strCheckFile)) return;
+  }
+
+  // Add filename to the list if it's not there yet
+  if (!AddFile(strFilename)) return;
+
+  const Str_t strExt = strCheckFile.GetFileExt();
+
+  if (strExt == ".mdl") {
+    AddExtrasWithMDL(strFilename);
+
+  } else if (strExt == ".tex") {
+    AddExtrasWithTEX(_strRoot + strCheckFile);
+  }
+};
+
+// Scan the dictionary of a world and extract filenames that aren't in existing dependencies
+static void ScanWorldDictionary(CDataStream &strm) {
+  // Dictionary beginning
+  strm.Expect(CByteArray("DICT", 4));
+
   s32 ctFiles;
   strm >> ctFiles;
 
@@ -81,130 +195,10 @@ void ScanDictionary(CDataStream &strm) {
     strm >> strFilename;
 
     // Skip empty filenames
-    if (strFilename == "") {
-      continue;
-    }
-    
+    if (strFilename == "") continue;
+
     FixFilename(strFilename);
-
-    // Check if the file already exists in the list of dependencies
-    CPath strCheck = strFilename;
-    ToLower(strCheck);
-
-    // Skip if already in there
-    if (InDepends(strCheck)) continue;
-
-    // Try with OGG if no MP3
-    if (PackOGG() && strCheck.GetFileExt() == ".mp3") {
-      strCheck = strCheck.RemoveExt() + ".ogg";
-
-      // OGG is present instead of MP3
-      if (InDepends(strCheck)) continue;
-    }
-    
-    if (IsRev()) {
-      // Try with different directories
-      ReplaceRevDirs(strCheck);
-      if (InDepends(strCheck)) continue;
-
-      // Try replacing spaces
-      ReplaceSpaces(strCheck);
-      if (InDepends(strCheck)) continue;
-    }
-
-    // Add filename to the list if it's not there yet
-    if (AddFile(strFilename)) {
-      CountFile(strFilename);
-
-      Str_t strExt = strCheck.GetFileExt();
-
-      // Pack INI configs for models
-      if (strExt == ".mdl") {
-        if (PackINI()) {
-          Str_t strINI = strFilename.RemoveExt() + ".ini";
-
-          if (AddFile(strINI)) {
-            CountFile(strINI);
-          }
-        }
-
-      // Pack base textures with FX textures
-      } else if (strExt == ".tex") {
-        CFileDevice dTex((_strRoot + strCheck).c_str());
-        bool bOpen = dTex.Open(IReadWriteDevice::OM_READONLY);
-
-        if (bOpen) {
-          CDataStream strmTex(&dTex);
-
-          // Skip texture version and data with 6 values (including two chunks)
-          strmTex.Seek(36);
-
-          // FX texture is written
-          if (strmTex.Peek(4) == "FXDT") {
-            // Skip to the end of the texture
-            strmTex.Seek(strmTex.Device()->Size() - 1);
-
-            s32 ctChars = 0;
-
-            // Go backwards until the null character
-            // 56 is the fixed amount of bytes unrelated to the base texture path
-            while (strmTex.Pos() > 56)
-            {
-              c8 cByte;
-              dTex.Peek(&cByte, 1);
-
-              // Encountered a null character
-              if (cByte == '\x00') {
-                // Skip it
-                strmTex.Skip(1);
-                break;
-              }
-
-              // Move backward
-              strmTex.Seek(strmTex.Pos() - 1);
-              ++ctChars;
-            }
-
-            if (ctChars > 0) {
-              // Extract a string from the current position to the end of file
-              CByteArray baBaseTex = strmTex.Read(ctChars);
-
-              // Read base texture file
-              Str_t strBaseTex = baBaseTex.ConstData();
-              FixFilename(strBaseTex);
-            
-              // Check if the file already exists in the list of dependencies
-              Str_t strCheckTex = strBaseTex;
-              ToLower(strCheckTex);
-
-              // Proceed if it's not there
-              if (!InDepends(strCheckTex)) {
-                bool bAdd = true;
-
-                if (IsRev()) {
-                  // Try with different directories
-                  ReplaceRevDirs(strCheckTex);
-                  bAdd = !InDepends(strCheckTex);
-                
-                  // Try replacing spaces
-                  if (bAdd) {
-                    ReplaceSpaces(strCheckTex);
-                    bAdd = !InDepends(strCheckTex);
-                  }
-                }
-            
-                // Add base texture file
-                if (bAdd && AddFile(strBaseTex)) {
-                  CountFile(strBaseTex);
-                }
-              }
-            }
-          }
-
-          dTex.Close();
-        }
-      }
-    }
+    TryToAddFile(strFilename);
   }
 
   // Dictionary end
@@ -215,7 +209,7 @@ void ScanDictionary(CDataStream &strm) {
 void ScanWorld(const CPath &strWorld) {
   CFileDevice d((_strRoot + strWorld).c_str());
   d.Open(IReadWriteDevice::OM_READONLY);
-  
+
   // Verify world file first
   CDataStream strm(&d);
   VerifyWorldFile(strm);
@@ -231,7 +225,7 @@ void ScanWorld(const CPath &strWorld) {
     if (strm.Peek(4) == "DTRS") {
       strm.Skip(4);
     }
-    
+
     // Skip SSR leaderboards chunk
     if (strm.Peek(4) == "LDRB") {
       strm.Skip(4);
@@ -239,7 +233,7 @@ void ScanWorld(const CPath &strWorld) {
 
       _iFlags |= SCAN_SSR;
     }
-  
+
     // Skip another SSR chunk and its data (4 + 12)
     if (strm.Peek(4) == "Plv0") {
       strm.Skip(16);
@@ -276,18 +270,14 @@ void ScanWorld(const CPath &strWorld) {
     }
 
     if (FileExists(_strRoot + strExtra)) {
-      if (AddFile(strExtra)) {
-        CountFile(strExtra);
-      }
+      AddFile(strExtra);
     }
 
     // Add VIS file
     strExtra = strNoExt + ".vis";
 
     if (FileExists(_strRoot + strExtra)) {
-      if (AddFile(strExtra)) {
-        CountFile(strExtra);
-      }
+      AddFile(strExtra);
     }
   }
 
@@ -308,8 +298,7 @@ void ScanWorld(const CPath &strWorld) {
   strm.Seek(iPos);
 
   // Brush textures dictionary
-  strm.Expect(CByteArray("DICT", 4));
-  ScanDictionary(strm);
+  ScanWorldDictionary(strm);
 
   // Expect the next dictionary position
   strm.Expect(CByteArray("DPOS", 4));
@@ -319,8 +308,7 @@ void ScanWorld(const CPath &strWorld) {
   strm.Seek(iPos);
 
   // Entity resources dictionary
-  strm.Expect(CByteArray("DICT", 4));
-  ScanDictionary(strm);
+  ScanWorldDictionary(strm);
 
   d.Close();
 

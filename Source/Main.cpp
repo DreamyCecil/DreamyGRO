@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 Dreamy Cecil
+/* Copyright (c) 2022-2024 Dreamy Cecil
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@ Strings_t _aStore;
 CHashArray _aDepend;
 
 Strings_t _aFiles;
+s32 _ctDepend = 0;
 CPath _strGRO = "";
 
 u32 _iFlags = 0;
@@ -42,7 +43,7 @@ bool InDepends(const Str_t &strFilename, size_t *piHash) {
   // Get filename hash
   std::hash<Str_t> hash;
   const size_t iHash = hash(strFilename);
-  
+
   if (piHash != nullptr) {
     *piHash = iHash;
   }
@@ -58,7 +59,7 @@ bool InFiles(Str_t strFilename) {
   ToLower(strFilename);
 
   Strings_t::const_iterator it;
-  
+
   // Case insensitive search
   for (it = _aFiles.begin(); it != _aFiles.end(); ++it) {
     Str_t strInFiles = *it;
@@ -79,6 +80,11 @@ bool AddFile(const Str_t &strFilename) {
   }
 
   _aFiles.push_back(strFilename);
+
+  // Count one file
+  ++_ctDepend;
+  std::cout << _ctDepend << ". " << strFilename << '\n';
+
   return true;
 };
 
@@ -169,7 +175,7 @@ int main(int ctArgs, char *astrArgs[]) {
 
     return 1;
   }
-  
+
   // Get program arguments
   Strings_t aArgs;
 
@@ -219,7 +225,7 @@ int main(int ctArgs, char *astrArgs[]) {
       ZipArchive::Ptr pGro = ZipFile::Open(_strGRO);
 
       // Create streams for each file
-      size_t ctFiles = _aFiles.size();
+      const size_t ctFiles = _aFiles.size();
       CFileInputs aFileStreams(ctFiles);
 
       // Go through file dependencies
@@ -283,7 +289,7 @@ int main(int ctArgs, char *astrArgs[]) {
       Pause();
       return 1;
     }
-    
+
     // Display files that couldn't be packed
     DisplayFailedFiles(aFailed, "\nCouldn't pack these files:");
     std::cout << '"' << _strGRO << "\" is ready!\n";

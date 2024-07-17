@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 Dreamy Cecil
+/* Copyright (c) 2022-2024 Dreamy Cecil
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,6 +43,7 @@ extern Strings_t _aStore;   // List of files for packing without compression
 extern CHashArray _aDepend; // List of dependencies
 
 extern Strings_t _aFiles; // Final list of files to pack
+extern s32 _ctDepend; // Dependency counter
 extern CPath _strGRO; // Output GRO archive
 
 enum EPackerFlags {

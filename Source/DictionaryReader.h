@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 Dreamy Cecil
+/* Copyright (c) 2022-2024 Dreamy Cecil
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,9 +23,6 @@
 #define _DREAMYGRO_INCL_DICTIONARYREADER_H
 
 #include "Main.h"
-
-// Scan the dictionary and extract filenames that aren't in existing dependencies
-void ScanDictionary(CDataStream &strm);
 
 // Scan the world dictionary for dependencies
 void ScanWorld(const CPath &strWorld);
