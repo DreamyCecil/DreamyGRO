@@ -88,10 +88,10 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName", "Dreamy Cecil"
-            VALUE "FileDescription", "Dreamy GRO - Packs WLD files with its resources into GRO archives."
+            VALUE "FileDescription", "Dreamy GRO"
             VALUE "FileVersion", "1.0.0.1"
             VALUE "InternalName", "DreamyGRO.exe"
-            VALUE "LegalCopyright", "Copyright (C) Dreamy Cecil, 2022"
+            VALUE "LegalCopyright", "Copyright (C) Dreamy Cecil, 2022-2024"
             VALUE "OriginalFilename", "DreamyGRO.exe"
             VALUE "ProductName", "Dreamy GRO"
             VALUE "ProductVersion", "1.0.0.1"

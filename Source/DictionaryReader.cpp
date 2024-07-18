@@ -208,7 +208,10 @@ static void ScanWorldDictionary(CDataStream &strm) {
 // Scan the world dictionary for dependencies
 void ScanWorld(const CPath &strWorld) {
   CFileDevice d((_strRoot + strWorld).c_str());
-  d.Open(IReadWriteDevice::OM_READONLY);
+
+  if (!d.Open(IReadWriteDevice::OM_READONLY)) {
+    throw CMessageException("Cannot open the file!\n");
+  }
 
   // Verify world file first
   CDataStream strm(&d);

@@ -27,11 +27,11 @@
 #include <ZipLib/ZipArchiveEntry.h>
 
 Str_t _strRoot = "";
-Strings_t _aWorlds;
-Strings_t _aStore;
-CHashArray _aDepend;
+Strings_t _aScanFiles;
+Strings_t _aNoCompression;
+CHashArray _aStdDepends;
 
-CListedFiles _aFiles;
+CListedFiles _aFilesToPack;
 bool _bCountFiles = false;
 s32 _ctFiles = 0;
 
@@ -50,10 +50,10 @@ bool InDepends(const Str_t &strFilename, size_t *piHash) {
     *piHash = iHash;
   }
 
-  CHashArray::const_iterator it = std::find(_aDepend.begin(), _aDepend.end(), iHash);
+  CHashArray::const_iterator it = std::find(_aStdDepends.begin(), _aStdDepends.end(), iHash);
 
   // Already in there
-  return (it != _aDepend.end());
+  return (it != _aStdDepends.end());
 };
 
 // Check if the file is already added
@@ -63,7 +63,7 @@ bool InFiles(Str_t strFilename) {
   CListedFiles::const_iterator it;
 
   // Case insensitive search
-  for (it = _aFiles.begin(); it != _aFiles.end(); ++it) {
+  for (it = _aFilesToPack.begin(); it != _aFilesToPack.end(); ++it) {
     Str_t strInFiles = it->strFile;
     ToLower(strInFiles);
 
@@ -86,10 +86,10 @@ bool AddFile(const Str_t &strFilename) {
     ++_ctFiles;
     std::cout << _ctFiles << ". " << strFilename << '\n';
 
-    _aFiles.push_back(ListedFile_t(strFilename, _ctFiles));
+    _aFilesToPack.push_back(ListedFile_t(strFilename, _ctFiles));
 
   } else {
-    _aFiles.push_back(ListedFile_t(strFilename, 0));
+    _aFilesToPack.push_back(ListedFile_t(strFilename, 0));
   }
 
   return true;
@@ -186,7 +186,7 @@ static void Pause(void) {
 
 // Entry point
 int main(int ctArgs, char *astrArgs[]) {
-  std::cout << "DreamyGRO - (c) Dreamy Cecil, 2022\n\n";
+  std::cout << "DreamyGRO - (c) Dreamy Cecil, 2022-2024\n\n";
 
   if (ctArgs < 2) {
     std::cout << "Please specify path to a world file or use command line arguments:\n";
@@ -217,19 +217,19 @@ int main(int ctArgs, char *astrArgs[]) {
       ParseArguments(aArgs);
     }
 
-    std::cout << "\nStandard dependencies: " << _aDepend.size() << "\n\n";
+    std::cout << "\nStandard dependencies: " << _aStdDepends.size() << "\n\n";
 
     // Start counting dependencies
     _bCountFiles = true;
     _ctFiles = 0;
 
-    for (size_t iWorld = 0; iWorld < _aWorlds.size(); ++iWorld) {
-      Str_t strWorld = _aWorlds[iWorld];
-      Replace(strWorld, '\\', '/');
+    for (size_t iWorld = 0; iWorld < _aScanFiles.size(); ++iWorld) {
+      CPath strFile = _aScanFiles[iWorld];
+      Replace(strFile, '\\', '/');
 
-      std::cout << "Extra dependencies for '" << strWorld << "':\n";
+      std::cout << "Extra dependencies for '" << strFile << "':\n";
 
-      ScanWorld(strWorld);
+      ScanWorld(strFile);
     }
 
   } catch (CMessageException &ex) {
@@ -251,12 +251,12 @@ int main(int ctArgs, char *astrArgs[]) {
       ZipArchive::Ptr pGro = ZipFile::Open(_strGRO);
 
       // Create streams for each file
-      const size_t ctFiles = _aFiles.size();
+      const size_t ctFiles = _aFilesToPack.size();
       CFileInputs aFileStreams(ctFiles);
 
       // Go through file dependencies
       for (size_t iFile = 0; iFile < ctFiles; ++iFile) {
-        const ListedFile_t &listed = _aFiles[iFile];
+        const ListedFile_t &listed = _aFilesToPack[iFile];
         CPath strFile = listed.strFile;
 
         // Skip if no file
@@ -285,10 +285,10 @@ int main(int ctArgs, char *astrArgs[]) {
         Str_t strExt = strFile.GetFileExt();
         ToLower(strExt);
 
-        Strings_t::const_iterator itStore = std::find(_aStore.begin(), _aStore.end(), strExt);
+        Strings_t::const_iterator itStore = std::find(_aNoCompression.begin(), _aNoCompression.end(), strExt);
 
         // Store files of this type
-        if (itStore != _aStore.end()) {
+        if (itStore != _aNoCompression.end()) {
           pMethod = StoreMethod::Create();
         } else {
           pMethod = DeflateMethod::Create();
@@ -315,8 +315,8 @@ int main(int ctArgs, char *astrArgs[]) {
     std::cout << "\nChecking for physical existence of files...\n";
 
     // Go through file dependencies
-    for (size_t iFile = 0; iFile < _aFiles.size(); ++iFile) {
-      const ListedFile_t &listed = _aFiles[iFile];
+    for (size_t iFile = 0; iFile < _aFilesToPack.size(); ++iFile) {
+      const ListedFile_t &listed = _aFilesToPack[iFile];
 
       // Skip if no file
       if (!CheckFile(listed.strFile)) {

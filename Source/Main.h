@@ -46,12 +46,12 @@ struct ListedFile_t {
 typedef std::vector<ListedFile_t> CListedFiles;
 
 // Preparation
-extern Str_t _strRoot;      // Game folder directory
-extern Strings_t _aWorlds;  // List of WLD files
-extern Strings_t _aStore;   // List of files for packing without compression
-extern CHashArray _aDepend; // List of dependencies
+extern Str_t _strRoot;            // Game folder directory
+extern Strings_t _aScanFiles;     // List of files to scan for dependencies
+extern Strings_t _aNoCompression; // List of files for packing without compression
+extern CHashArray _aStdDepends;   // List of standard dependencies
 
-extern CListedFiles _aFiles; // Final list of files to pack
+extern CListedFiles _aFilesToPack; // Final list of files to pack
 extern bool _bCountFiles; // Start counting extra dependencies using the counter below
 extern s32 _ctFiles; // Dependency counter
 

@@ -94,7 +94,7 @@ static void ParseWorld(Strings_t::const_iterator &it, const Strings_t &aArgs) {
   // Add relative path to the world
   Str_t strWorld = *itNext;
 
-  _aWorlds.push_back(strWorld);
+  _aScanFiles.push_back(strWorld);
   AddFile(strWorld);
 
   ++it;
@@ -120,7 +120,7 @@ static void ParseStoreFile(Strings_t::const_iterator &it, const Strings_t &aArgs
 
   // Add lowercase extension
   ToLower(strExt);
-  _aStore.push_back(strExt);
+  _aNoCompression.push_back(strExt);
 };
 
 static void ParseDependency(Strings_t &astrDependencies, Strings_t::const_iterator &it, const Strings_t &aArgs) {
@@ -257,7 +257,7 @@ void ParseArguments(Strings_t &aArgs) {
 
     // Add to existing dependencies if it's not there
     if (!InDepends(strCheck, &iHash)) {
-      _aDepend.push_back(iHash);
+      _aStdDepends.push_back(iHash);
     }
   }
 };
@@ -270,7 +270,10 @@ void FromWorldPath(const CPath &strWorld) {
   // Verify world file
   {
     CFileDevice d((_strRoot + strWorld).c_str());
-    d.Open(IReadWriteDevice::OM_READONLY);
+
+    if (!d.Open(IReadWriteDevice::OM_READONLY)) {
+      throw CMessageException("Cannot open the file!\n");
+    }
 
     CDataStream strm(&d);
     VerifyWorldFile(strm);
@@ -280,7 +283,7 @@ void FromWorldPath(const CPath &strWorld) {
   size_t iDir = strWorld.GoUpUntilDir("Levels");
 
   if (iDir == Str_t::npos) {
-    CMessageException::Throw("You may only open WLD files that reside within 'Levels' folder of a game directory!\n");
+    throw CMessageException("You may only open WLD files that reside within 'Levels' folder of a game directory!\n");
   }
 
   // Set root path and output GRO
@@ -311,20 +314,20 @@ void FromWorldPath(const CPath &strWorld) {
 
     // Store music files
     if (ConsoleYN("Pack uncompressed music files?", true)) {
-      _aStore.push_back(".ogg");
-      _aStore.push_back(".mp3");
+      _aNoCompression.push_back(".ogg");
+      _aNoCompression.push_back(".mp3");
     }
 
     // Store the world file
     if (ConsoleYN("Pack uncompressed world file?", false)) {
-      _aStore.push_back(".wld");
+      _aNoCompression.push_back(".wld");
     }
   }
 
   // Add relative path to the world
   Str_t strRelative = strWorld.substr(iDir);
 
-  _aWorlds.push_back(strRelative);
+  _aScanFiles.push_back(strRelative);
   AddFile(strRelative);
 
   AutoIgnoreGames(true);
@@ -371,7 +374,7 @@ void AutoIgnoreGames(bool bFromWorld) {
 
   // Unknown game
   } else {
-    CMessageException::Throw("Couldn't automatically determine the game directory! (no 'SE1_00.gro', '1_00c.gro', 'All_01.gro' or 'SE1_10.gro')\n");
+    throw CMessageException("Couldn't determine the game directory! (no 'SE1_00.gro', '1_00c.gro', 'All_01.gro' or 'SE1_10.gro')\n");
   }
 };
 
@@ -401,7 +404,7 @@ void IgnoreGRO(const Str_t &strGRO) {
 
     // Add to existing dependencies if it's not there
     if (!InDepends(strCheck, &iHash)) {
-      _aDepend.push_back(iHash);
+      _aStdDepends.push_back(iHash);
     }
   }
 };
