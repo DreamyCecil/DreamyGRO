@@ -95,7 +95,7 @@ static void ParseWorld(Strings_t::const_iterator &it, const Strings_t &aArgs) {
   Str_t strWorld = *itNext;
 
   _aWorlds.push_back(strWorld);
-  _aFiles.push_back(strWorld);
+  AddFile(strWorld);
 
   ++it;
 };
@@ -325,7 +325,7 @@ void FromWorldPath(const CPath &strWorld) {
   Str_t strRelative = strWorld.substr(iDir);
 
   _aWorlds.push_back(strRelative);
-  _aFiles.push_back(strRelative);
+  AddFile(strRelative);
 
   AutoIgnoreGames(true);
 };

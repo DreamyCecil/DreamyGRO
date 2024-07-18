@@ -256,7 +256,7 @@ void ScanWorld(const CPath &strWorld) {
     strm >> strDummy;
   }
 
-  _ctDepend = 0;
+  size_t ctLastFiles = _ctFiles;
 
   {
     const Str_t strNoExt = strWorld.RemoveExt();
@@ -313,7 +313,7 @@ void ScanWorld(const CPath &strWorld) {
   d.Close();
 
   // No dependencies have been added
-  if (_ctDepend == 0) {
+  if (_ctFiles == ctLastFiles) {
     std::cout << "No dependencies\n";
   }
 };

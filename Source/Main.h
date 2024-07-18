@@ -36,14 +36,25 @@ using namespace dreamy;
 typedef std::vector<size_t> CHashArray;
 typedef std::vector<std::ifstream> CFileInputs;
 
+struct ListedFile_t {
+  Str_t strFile;
+  size_t iNumber;
+
+  ListedFile_t(const Str_t &strSet, size_t iSet) : strFile(strSet), iNumber(iSet) {};
+};
+
+typedef std::vector<ListedFile_t> CListedFiles;
+
 // Preparation
 extern Str_t _strRoot;      // Game folder directory
 extern Strings_t _aWorlds;  // List of WLD files
 extern Strings_t _aStore;   // List of files for packing without compression
 extern CHashArray _aDepend; // List of dependencies
 
-extern Strings_t _aFiles; // Final list of files to pack
-extern s32 _ctDepend; // Dependency counter
+extern CListedFiles _aFiles; // Final list of files to pack
+extern bool _bCountFiles; // Start counting extra dependencies using the counter below
+extern s32 _ctFiles; // Dependency counter
+
 extern CPath _strGRO; // Output GRO archive
 
 enum EPackerFlags {

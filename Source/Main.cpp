@@ -31,8 +31,10 @@ Strings_t _aWorlds;
 Strings_t _aStore;
 CHashArray _aDepend;
 
-Strings_t _aFiles;
-s32 _ctDepend = 0;
+CListedFiles _aFiles;
+bool _bCountFiles = false;
+s32 _ctFiles = 0;
+
 CPath _strGRO = "";
 
 u32 _iFlags = 0;
@@ -58,11 +60,11 @@ bool InDepends(const Str_t &strFilename, size_t *piHash) {
 bool InFiles(Str_t strFilename) {
   ToLower(strFilename);
 
-  Strings_t::const_iterator it;
+  CListedFiles::const_iterator it;
 
   // Case insensitive search
   for (it = _aFiles.begin(); it != _aFiles.end(); ++it) {
-    Str_t strInFiles = *it;
+    Str_t strInFiles = it->strFile;
     ToLower(strInFiles);
 
     if (strInFiles == strFilename) {
@@ -79,11 +81,16 @@ bool AddFile(const Str_t &strFilename) {
     return false;
   }
 
-  _aFiles.push_back(strFilename);
+  if (_bCountFiles) {
+    // Count one dependency
+    ++_ctFiles;
+    std::cout << _ctFiles << ". " << strFilename << '\n';
 
-  // Count one file
-  ++_ctDepend;
-  std::cout << _ctDepend << ". " << strFilename << '\n';
+    _aFiles.push_back(ListedFile_t(strFilename, _ctFiles));
+
+  } else {
+    _aFiles.push_back(ListedFile_t(strFilename, 0));
+  }
 
   return true;
 };
@@ -137,16 +144,31 @@ void VerifyWorldFile(CDataStream &strmWorld) {
   }
 };
 
+// Check if some listed dependency exists
+static bool CheckFile(Str_t strFile) {
+  // Dependency exists on disk
+  if (FileExists(_strRoot + strFile)) return true;
+
+  // Try again for SSR directories
+  if (IsRev()) {
+    ReplaceRevDirs(strFile);
+    return FileExists(_strRoot + strFile);
+  }
+
+  return false;
+};
+
 // Display a list of files that cannot be used
-static bool DisplayFailedFiles(const Strings_t &astr, const Str_t &strError) {
-  if (astr.empty()) {
+static bool DisplayFailedFiles(const CListedFiles &aFailed, const Str_t &strError) {
+  if (aFailed.empty()) {
     return false;
   }
 
   std::cout << strError << '\n';
 
-  for (size_t iFailed = 0; iFailed < astr.size(); ++iFailed) {
-    std::cout << "- " << astr[iFailed] << '\n';
+  for (size_t i = 0; i < aFailed.size(); ++i) {
+    const ListedFile_t &file = aFailed[i];
+    std::cout << file.iNumber << ". " << file.strFile << '\n';
   }
 
   std::cout << '\n';
@@ -197,6 +219,10 @@ int main(int ctArgs, char *astrArgs[]) {
 
     std::cout << "\nStandard dependencies: " << _aDepend.size() << "\n\n";
 
+    // Start counting dependencies
+    _bCountFiles = true;
+    _ctFiles = 0;
+
     for (size_t iWorld = 0; iWorld < _aWorlds.size(); ++iWorld) {
       Str_t strWorld = _aWorlds[iWorld];
       Replace(strWorld, '\\', '/');
@@ -214,7 +240,7 @@ int main(int ctArgs, char *astrArgs[]) {
   }
 
   // Files that couldn't be packed
-  Strings_t aFailed;
+  CListedFiles aFailed;
 
   if (!OnlyDep()) {
     std::cout << "\nPacking files...\n";
@@ -230,24 +256,13 @@ int main(int ctArgs, char *astrArgs[]) {
 
       // Go through file dependencies
       for (size_t iFile = 0; iFile < ctFiles; ++iFile) {
-        CPath strFile = _aFiles[iFile];
-        std::ifstream &file = aFileStreams[iFile];
+        const ListedFile_t &listed = _aFiles[iFile];
+        CPath strFile = listed.strFile;
 
         // Skip if no file
-        if (!FileExists(_strRoot + strFile)) {
-          if (!IsRev()) {
-            aFailed.push_back(strFile);
-            continue;
-          }
-
-          // Try again for SSR directories
-          ReplaceRevDirs(strFile);
-
-          // Still nothing
-          if (!FileExists(_strRoot + strFile)) {
-            aFailed.push_back(strFile);
-            continue;
-          }
+        if (!CheckFile(strFile)) {
+          aFailed.push_back(listed);
+          continue;
         }
 
         // Add file under the relative directory
@@ -255,11 +270,12 @@ int main(int ctArgs, char *astrArgs[]) {
 
         // Skip if can't create an entry
         if (pEntry == nullptr) {
-          aFailed.push_back(strFile);
+          aFailed.push_back(listed);
           continue;
         }
 
         // Write real file
+        std::ifstream &file = aFileStreams[iFile];
         file.open(_strRoot + strFile, std::ios::binary);
 
         // Determine compression method
@@ -300,23 +316,12 @@ int main(int ctArgs, char *astrArgs[]) {
 
     // Go through file dependencies
     for (size_t iFile = 0; iFile < _aFiles.size(); ++iFile) {
-      Str_t strFile = _aFiles[iFile];
+      const ListedFile_t &listed = _aFiles[iFile];
 
       // Skip if no file
-      if (!FileExists(_strRoot + strFile)) {
-        if (!IsRev()) {
-          aFailed.push_back(strFile);
-          continue;
-        }
-
-        // Try again for SSR directories
-        ReplaceRevDirs(strFile);
-
-        // Still nothing
-        if (!FileExists(_strRoot + strFile)) {
-          aFailed.push_back(strFile);
-          continue;
-        }
+      if (!CheckFile(listed.strFile)) {
+        aFailed.push_back(listed);
+        continue;
       }
     }
 
