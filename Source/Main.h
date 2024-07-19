@@ -53,7 +53,7 @@ extern CHashArray _aStdDepends;   // List of standard dependencies
 
 extern CListedFiles _aFilesToPack; // Final list of files to pack
 extern bool _bCountFiles; // Start counting extra dependencies using the counter below
-extern s32 _ctFiles; // Dependency counter
+extern size_t _ctFiles; // Dependency counter
 
 extern CPath _strGRO; // Output GRO archive
 

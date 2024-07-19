@@ -33,17 +33,28 @@
 #define ARG_FLAGS  "-f" // Set certain behavior flags (see EPackerFlags definition)
 #define ARG_PAUSE  "-p" // Pause program execution before closing the console application
 
+// Games that can be detected automatically
+enum EGameType {
+  GAME_NONE, // Unknown game
+  GAME_TFE,
+  GAME_TSE,
+  GAME_REV,
+};
+
 // Argument descriptions
 extern const char *_astrArgDesc[];
 
 // Parse command line arguments
 void ParseArguments(Strings_t &aArgs);
 
-// Build parameters from just a path to the world file
-void FromWorldPath(const CPath &strWorld);
+// Build parameters from the full path and return file path relative to the root directory
+Str_t FromFullFilePath(const CPath &strFile, const CPath &strDefaultFolderInRoot);
 
-// Automatically detect GRO files from specific games
-void AutoIgnoreGames(bool bFromWorld);
+// Detect default GRO packages in some directory to determine the game
+EGameType DetectGame(const Str_t &strDir);
+
+// Automatically ignore GRO files from a specific game
+void IgnoreGame(EGameType eGame, bool bSetFlagsFromGame);
 
 // Ignore dependencies from a GRO file
 void IgnoreGRO(const Str_t &strGRO);

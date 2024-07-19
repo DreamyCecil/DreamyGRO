@@ -88,11 +88,11 @@ static void AddExtrasWithTEX(const Str_t &strTextureFile) {
   // 56 is the fixed amount of bytes unrelated to the base texture path
   while (strmTex.Pos() > 56)
   {
-    c8 cByte;
-    dTex.Peek(&cByte, 1);
+    c8 ch;
+    strmTex.Peek(&ch, 1);
 
     // Encountered a null character
-    if (cByte == '\x00') {
+    if (ch == '\0') {
       // Skip it
       strmTex.Skip(1);
       break;
@@ -210,7 +210,7 @@ void ScanWorld(const CPath &strWorld) {
   CFileDevice d((_strRoot + strWorld).c_str());
 
   if (!d.Open(IReadWriteDevice::OM_READONLY)) {
-    throw CMessageException("Cannot open the file!\n");
+    throw CMessageException("Cannot open the file!");
   }
 
   // Verify world file first

@@ -227,7 +227,9 @@ void ParseArguments(Strings_t &aArgs) {
   // Add GRO files from games automatically
   if (DetectGRO()) {
     try {
-      AutoIgnoreGames(false);
+      EGameType eGame = DetectGame(_strRoot);
+      IgnoreGame(eGame, false);
+
     } catch (CMessageException &ex) {
       std::cout << ex.what() << '\n';
     }
@@ -262,129 +264,178 @@ void ParseArguments(Strings_t &aArgs) {
   }
 };
 
-// Build parameters from just a path to the world file
-void FromWorldPath(const CPath &strWorld) {
-  // Force the pause to be able to see the output if opening from a world file
-  _bPauseAtTheEnd = true;
+// Detect root game directory from a full path to the file
+static size_t DetermineRootDir(const CPath &strFile, const CPath &strDefaultFolderInRoot, EGameType &eGame) {
+  CPath strCurrentDir = strFile;
+  size_t iFrom = Str_t::npos;
+  size_t iGameDir;
 
-  // Verify world file
-  {
-    CFileDevice d((_strRoot + strWorld).c_str());
+  eGame = GAME_NONE;
 
-    if (!d.Open(IReadWriteDevice::OM_READONLY)) {
-      throw CMessageException("Cannot open the file!\n");
-    }
+  // Go up each directory and try to detect the game from there
+  do {
+    iGameDir = strCurrentDir.find_last_of("/\\", iFrom);
 
-    CDataStream strm(&d);
-    VerifyWorldFile(strm);
+    // No more directories
+    if (iGameDir == Str_t::npos) break;
+
+    // Erase everything after the last slash
+    eGame = DetectGame(strCurrentDir.erase(iGameDir + 1));
+
+    // Exclude last slash from the next search
+    iFrom = iGameDir - 1;
+
+  // Go until the game type is determined
+  } while (eGame == GAME_NONE);
+
+  // Try to determine root directory from the default path under it as a backup
+  if (eGame == GAME_NONE && strDefaultFolderInRoot != "") {
+    iGameDir = strFile.GoUpUntilDir(strDefaultFolderInRoot);
+
+  // Include a slash from detected game directory
+  } else {
+    ++iGameDir;
   }
 
-  // Determine root directory from the path to WLD
-  size_t iDir = strWorld.GoUpUntilDir("Levels");
-
-  if (iDir == Str_t::npos) {
-    throw CMessageException("You may only open WLD files that reside within 'Levels' folder of a game directory!\n");
+  if (iGameDir == Str_t::npos) {
+    CMessageException::Throw("You may only open '%s' files from within '%s' folder of a game directory!",
+      strFile.GetFileExt().c_str(), strDefaultFolderInRoot.c_str());
   }
 
-  // Set root path and output GRO
-  _strRoot = strWorld.substr(0, iDir);
+  return iGameDir;
+};
 
+// Prompt the user if opening individual files
+static void ManualSetup(const CPath &strFile) {
   // Only show dependencies
   if (ConsoleYN("Show world dependencies instead of packing?", false)) {
     _iFlags |= SCAN_DEP;
+    return;
   }
 
-  if (!OnlyDep()) {
-    Str_t strCustomGRO = ConsoleInput("Enter output GRO file (blank for automatic): ");
+  // Set output GRO
+  Str_t strCustomGRO = ConsoleInput("Enter output GRO file (blank for automatic): ");
 
-    if (strCustomGRO == "") {
-      _strGRO = _strRoot + "DreamyGRO_" + strWorld.GetFileName() + ".gro";
+  if (strCustomGRO == "") {
+    _strGRO = _strRoot + "DreamyGRO_" + strFile.GetFileName() + ".gro";
 
-    } else {
-      _strGRO = _strRoot + strCustomGRO;
+  } else {
+    _strGRO = _strRoot + strCustomGRO;
 
-      // Append extension
-      Str_t strCheck = _strGRO.GetFileExt();
-      ToLower(strCheck);
+    // Append extension
+    Str_t strCheck = _strGRO.GetFileExt();
+    ToLower(strCheck);
 
-      if (strCheck != ".gro") {
-        _strGRO += ".gro";
-      }
-    }
-
-    // Store music files
-    if (ConsoleYN("Pack uncompressed music files?", true)) {
-      _aNoCompression.push_back(".ogg");
-      _aNoCompression.push_back(".mp3");
-    }
-
-    // Store the world file
-    if (ConsoleYN("Pack uncompressed world file?", false)) {
-      _aNoCompression.push_back(".wld");
+    if (strCheck != ".gro") {
+      _strGRO += ".gro";
     }
   }
 
-  // Add relative path to the world
-  Str_t strRelative = strWorld.substr(iDir);
+  // Store music files
+  if (ConsoleYN("Pack uncompressed music files?", true)) {
+    _aNoCompression.push_back(".ogg");
+    _aNoCompression.push_back(".mp3");
+  }
 
-  _aScanFiles.push_back(strRelative);
-  AddFile(strRelative);
-
-  AutoIgnoreGames(true);
+  // Store the world file
+  if (ConsoleYN("Pack uncompressed world file?", false)) {
+    _aNoCompression.push_back(".wld");
+  }
 };
 
-// Automatically detect GRO files from specific games
-void AutoIgnoreGames(bool bFromWorld) {
-  // Ignore SE1.10 resources
-  if (FileExists(_strRoot + "SE1_10.gro")) {
-    std::cout << "\nDetected GRO files from Serious Engine 1.10...\n";
+// Build parameters from the full path and return file path relative to the root directory
+Str_t FromFullFilePath(const CPath &strFile, const CPath &strDefaultFolderInRoot) {
+  // Determine game and root directory
+  EGameType eGame;
+  size_t iDir = DetermineRootDir(strFile, strDefaultFolderInRoot, eGame);
+  _strRoot = strFile.substr(0, iDir);
 
-    IgnoreGRO("SE1_10.gro");
+  Str_t strGameType = "(unknown)";
 
-  // Ignore TSE resources
-  } else if (FileExists(_strRoot + "SE1_00.gro")) {
-    std::cout << "\nDetected GRO files from The Second Encounter...\n";
+  switch (eGame) {
+    case GAME_TFE: strGameType = "(TFE)"; break;
+    case GAME_TSE: strGameType = "(TSE)"; break;
+    case GAME_REV: strGameType = "(SSR)"; break;
+  }
 
-    IgnoreGRO("SE1_00.gro");
-    IgnoreGRO("SE1_00_Extra.gro");
-    IgnoreGRO("SE1_00_ExtraTools.gro");
-    IgnoreGRO("SE1_00_Music.gro");
-    IgnoreGRO("1_04_patch.gro");
-    IgnoreGRO("1_07_tools.gro");
+  std::cout << "Assumed game directory " << strGameType << ": " << _strRoot << "\n\n";
 
-  // Ignore SSR resources
-  } else if (FileExists(_strRoot + "All_01.gro")
-          && FileExists(_strRoot + "All_02.gro")) {
-    std::cout << "\nDetected GRO files from Revolution...\n";
-    if (bFromWorld) _iFlags |= SCAN_SSR;
+  // Setup for individual files
+  ManualSetup(strFile);
 
-    IgnoreGRO("All_01.gro");
-    IgnoreGRO("All_02.gro");
+  // Get relative path
+  Str_t strRelative = strFile.substr(iDir);
+  _aScanFiles.push_back(strRelative);
 
-  // Ignore TFE resources
-  } else if (FileExists(_strRoot + "1_00c.gro")) {
-    std::cout << "\nDetected GRO files from The First Encounter...\n";
-    if (bFromWorld) _iFlags |= SCAN_OGG;
+  IgnoreGame(eGame, true);
+  return strRelative;
+};
 
-    IgnoreGRO("1_00_ExtraTools.gro");
-    IgnoreGRO("1_00_music.gro");
-    IgnoreGRO("1_00c.gro");
-    IgnoreGRO("1_00c_scripts.gro");
-    IgnoreGRO("1_04_patch.gro");
+// Detect default GRO packages in some directory to determine the game
+EGameType DetectGame(const Str_t &strDir) {
+  // TSE 1.05 - 1.10
+  if (FileExists(strDir + "SE1_10.gro") || FileExists(strDir + "SE1_00.gro")) {
+    return GAME_TSE;
+  // Revolution
+  } else if (FileExists(strDir + "All_01.gro") && FileExists(strDir + "All_02.gro")) {
+    return GAME_REV;
+  // TFE 1.00 - 1.05
+  } else if (FileExists(strDir + "1_00c.gro") || FileExists(strDir + "1_00_a.gro") || FileExists(strDir + "1_00.gro")) {
+    return GAME_TFE;
+  }
 
-  // Unknown game
-  } else {
-    throw CMessageException("Couldn't determine the game directory! (no 'SE1_00.gro', '1_00c.gro', 'All_01.gro' or 'SE1_10.gro')\n");
+  return GAME_NONE;
+};
+
+// Automatically ignore GRO files from a specific game
+void IgnoreGame(EGameType eGame, bool bSetFlagsFromGame) {
+  switch (eGame) {
+    // Ignore TSE resources
+    case GAME_TSE: {
+      std::cout << "\nDetected GRO packages from The Second Encounter!\n";
+
+      IgnoreGRO("SE1_00.gro");
+      IgnoreGRO("SE1_10.gro");
+      IgnoreGRO("SE1_00_Extra.gro");
+      IgnoreGRO("SE1_00_ExtraTools.gro");
+      IgnoreGRO("SE1_00_Music.gro");
+      IgnoreGRO("1_04_patch.gro");
+      IgnoreGRO("1_07_tools.gro");
+    } break;
+
+    // Ignore SSR resources
+    case GAME_REV: {
+      std::cout << "\nDetected GRO packages from Revolution!\n";
+      if (bSetFlagsFromGame) _iFlags |= SCAN_SSR;
+
+      IgnoreGRO("All_01.gro");
+      IgnoreGRO("All_02.gro");
+    } break;
+
+    // Ignore TFE resources
+    case GAME_TFE: {
+      std::cout << "\nDetected GRO packages from The First Encounter!\n";
+      if (bSetFlagsFromGame) _iFlags |= SCAN_OGG;
+
+      IgnoreGRO("1_00.gro");
+      IgnoreGRO("1_00_a.gro");
+      IgnoreGRO("1_00c.gro");
+      IgnoreGRO("1_00c_scripts.gro");
+      IgnoreGRO("1_00_ExtraTools.gro");
+      IgnoreGRO("1_00_music.gro");
+      IgnoreGRO("1_04_patch.gro");
+    } break;
+
+    // Unknown game
+    default:
+      std::cout << "\nCouldn't detect any default GRO packages!\n";
   }
 };
 
 // Ignore dependencies from a GRO file
 void IgnoreGRO(const Str_t &strGRO) {
   // Skip if it doesn't exist
-  if (!FileExists(_strRoot + strGRO)) {
-    std::cout << '"' << strGRO << "\" does not exist!\n";
-    return;
-  }
+  if (!FileExists(_strRoot + strGRO)) return;
 
   ZipArchive::Ptr pGRO = ZipFile::Open(_strRoot + strGRO);
 

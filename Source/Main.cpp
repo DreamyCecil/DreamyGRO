@@ -33,7 +33,7 @@ CHashArray _aStdDepends;
 
 CListedFiles _aFilesToPack;
 bool _bCountFiles = false;
-s32 _ctFiles = 0;
+size_t _ctFiles = 0;
 
 CPath _strGRO = "";
 
@@ -208,26 +208,49 @@ int main(int ctArgs, char *astrArgs[]) {
   std::cout << "\n";
 
   try {
-    // Parse one world
+    // Parse one file
     if (aArgs.size() == 1) {
-      FromWorldPath(aArgs[0]);
+      // Force the pause to be able to see the output
+      _bPauseAtTheEnd = true;
+
+      {
+        // Verify world file
+        CFileDevice d(aArgs[0].c_str());
+
+        if (!d.Open(IReadWriteDevice::OM_READONLY)) {
+          throw CMessageException("Cannot open the file!");
+        }
+
+        CDataStream strm(&d);
+        VerifyWorldFile(strm);
+
+        Str_t strRelative = FromFullFilePath(aArgs[0], "Levels");
+        AddFile(strRelative); // The world itself should be packed too
+      }
 
     // Parse command line arguments
     } else {
       ParseArguments(aArgs);
     }
 
-    std::cout << "\nStandard dependencies: " << _aStdDepends.size() << "\n\n";
+    std::cout << "Standard dependencies: " << _aStdDepends.size() << '\n';
 
     // Start counting dependencies
     _bCountFiles = true;
     _ctFiles = 0;
 
-    for (size_t iWorld = 0; iWorld < _aScanFiles.size(); ++iWorld) {
-      CPath strFile = _aScanFiles[iWorld];
+    const size_t ctScanFiles = _aScanFiles.size();
+
+    // No files to scan
+    if (ctScanFiles == 0) {
+      throw CMessageException("No files to scan for dependencies");
+    }
+
+    for (size_t iScanFile = 0; iScanFile < ctScanFiles; ++iScanFile) {
+      CPath strFile = _aScanFiles[iScanFile];
       Replace(strFile, '\\', '/');
 
-      std::cout << "Extra dependencies for '" << strFile << "':\n";
+      std::cout << "\nExtra dependencies for '" << strFile << "':\n";
 
       ScanWorld(strFile);
     }
