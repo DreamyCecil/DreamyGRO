@@ -77,7 +77,6 @@ static void ParseOutput(Strings_t::const_iterator &it, const Strings_t &aArgs) {
     CMessageException::Throw("Expected a path to an output file after '%s'!", ARG_OUTPUT);
   }
 
-  // Add world
   _strGRO = *itNext;
   ++it;
 };
@@ -208,20 +207,22 @@ void ParseArguments(Strings_t &aArgs) {
     CMessageException::Throw("Game folder path has not been set! Please use '%s <game folder path>'!", ARG_ROOT);
   }
 
-  // No output path set
-  if (_strGRO == "") {
-    CMessageException::Throw("Output GRO file has not been set! Please use '%s <GRO file>'!", ARG_OUTPUT);
-  }
+  if (!OnlyDep()) {
+    // No output path set
+    if (_strGRO == "") {
+      CMessageException::Throw("Output GRO file has not been set! Please use '%s <GRO file>'!", ARG_OUTPUT);
+    }
 
-  // Relative path to the output GRO
-  #if !_DREAMY_UNIX
-    bool bRelative = (_strGRO.find(':') == Str_t::npos); // No disc with the colon (e.g. "C:")
-  #else
-    bool bRelative = (_strGRO.find('/') != 0); // Doesn't start with a slash
-  #endif
+    // Relative path to the output GRO
+    #if !_DREAMY_UNIX
+      bool bRelative = (_strGRO.find(':') == Str_t::npos); // No disc with the colon (e.g. "C:")
+    #else
+      bool bRelative = (_strGRO.find('/') != 0); // Doesn't start with a slash
+    #endif
 
-  if (bRelative) {
-    _strGRO = _strRoot + _strGRO;
+    if (bRelative) {
+      _strGRO = _strRoot + _strGRO;
+    }
   }
 
   // Add GRO files from games automatically
