@@ -62,8 +62,12 @@ static void ParseRoot(Strings_t::const_iterator &it, const Strings_t &aArgs) {
   _strRoot = *itNext;
   ++it;
 
-  // Add another slash at the end
-  if (_strRoot.rfind('\\') != _strRoot.length() - 1) {
+  // Make absolute path
+  if (_strRoot.IsRelative()) _strRoot = GetCurrentPath() + _strRoot;
+  _strRoot.Normalize();
+
+  // Add another separator at the end
+  if (!_strRoot.PathSeparatorAt(_strRoot.length() - 1)) {
     _strRoot += '/';
   }
 };
@@ -109,16 +113,15 @@ static void ParseStoreFile(Strings_t::const_iterator &it, const Strings_t &aArgs
   }
 
   // Get filename filter
-  Str_t strExt = *itNext;
+  Str_t strExt = StrToLower(*itNext);
   ++it;
 
   // Add a period to the extension
-  if (strExt.find('.') != 0) {
+  if (strExt[0] != '.') {
     strExt = "." + strExt;
   }
 
   // Add lowercase extension
-  ToLower(strExt);
   _aNoCompression.push_back(strExt);
 };
 
@@ -146,8 +149,7 @@ static void ParseFlag(Strings_t::const_iterator &it, const Strings_t &aArgs) {
   }
 
   // Add specific flag
-  Str_t strFlag = *itNext;
-  ToLower(strFlag);
+  const Str_t strFlag = StrToLower(*itNext);
   ++it;
 
   if (strFlag == "ssr") {
@@ -214,13 +216,7 @@ void ParseArguments(Strings_t &aArgs) {
     }
 
     // Relative path to the output GRO
-    #if !_DREAMY_UNIX
-      bool bRelative = (_strGRO.find(':') == Str_t::npos); // No disc with the colon (e.g. "C:")
-    #else
-      bool bRelative = (_strGRO.find('/') != 0); // Doesn't start with a slash
-    #endif
-
-    if (bRelative) {
+    if (_strGRO.IsRelative()) {
       _strGRO = _strRoot + _strGRO;
     }
   }
@@ -241,8 +237,7 @@ void ParseArguments(Strings_t &aArgs) {
     const Str_t &strDepend = astrDependencies[iDepend];
 
     // Copy path for various checks
-    CPath strCheck = strDepend;
-    ToLower(strCheck);
+    const CPath strCheck = StrToLower(strDepend);
 
     // Scan entire GRO archive
     if (strCheck.GetFileExt() == ".gro") {
@@ -268,7 +263,7 @@ void ParseArguments(Strings_t &aArgs) {
 // Detect root game directory from a full path to the file
 static size_t DetermineRootDir(const CPath &strFile, const CPath &strDefaultFolderInRoot, EGameType &eGame) {
   CPath strCurrentDir = strFile;
-  size_t iFrom = Str_t::npos;
+  size_t iFrom = NULL_POS;
   size_t iGameDir;
 
   eGame = GAME_NONE;
@@ -278,7 +273,7 @@ static size_t DetermineRootDir(const CPath &strFile, const CPath &strDefaultFold
     iGameDir = strCurrentDir.find_last_of("/\\", iFrom);
 
     // No more directories
-    if (iGameDir == Str_t::npos) break;
+    if (iGameDir == NULL_POS) break;
 
     // Erase everything after the last slash
     eGame = DetectGame(strCurrentDir.erase(iGameDir + 1));
@@ -298,7 +293,7 @@ static size_t DetermineRootDir(const CPath &strFile, const CPath &strDefaultFold
     ++iGameDir;
   }
 
-  if (iGameDir == Str_t::npos) {
+  if (iGameDir == NULL_POS) {
     CMessageException::Throw("You may only open '%s' files from within '%s' folder of a game directory!",
       strFile.GetFileExt().c_str(), strDefaultFolderInRoot.c_str());
   }
@@ -324,8 +319,7 @@ static void ManualSetup(const CPath &strFile) {
     _strGRO = _strRoot + strCustomGRO;
 
     // Append extension
-    Str_t strCheck = _strGRO.GetFileExt();
-    ToLower(strCheck);
+    Str_t strCheck = StrToLower(_strGRO.GetFileExt());
 
     if (strCheck != ".gro") {
       _strGRO += ".gro";
@@ -351,12 +345,13 @@ Str_t FromFullFilePath(const CPath &strFile, const CPath &strDefaultFolderInRoot
   size_t iDir = DetermineRootDir(strFile, strDefaultFolderInRoot, eGame);
   _strRoot = strFile.substr(0, iDir);
 
-  Str_t strGameType = "(unknown)";
+  Str_t strGameType;
 
   switch (eGame) {
     case GAME_TFE: strGameType = "(TFE)"; break;
     case GAME_TSE: strGameType = "(TSE)"; break;
     case GAME_REV: strGameType = "(SSR)"; break;
+    default: strGameType = "(unknown)";
   }
 
   std::cout << "Assumed game directory " << strGameType << ": " << _strRoot << "\n\n";
@@ -436,7 +431,10 @@ void IgnoreGame(EGameType eGame, bool bSetFlagsFromGame) {
 // Ignore dependencies from a GRO file
 void IgnoreGRO(const Str_t &strGRO) {
   // Skip if it doesn't exist
-  if (!FileExists(_strRoot + strGRO)) return;
+  if (!FileExists(_strRoot + strGRO)) {
+    std::cout << '"' << strGRO << "\" does not exist!\n";
+    return;
+  }
 
   ZipArchive::Ptr pGRO = ZipFile::Open(_strRoot + strGRO);
 
@@ -449,9 +447,7 @@ void IgnoreGRO(const Str_t &strGRO) {
     }
 
     // Make hash out of the filename in lowercase
-    Str_t strCheck = file->GetFullName();
-    ToLower(strCheck);
-
+    const Str_t strCheck = StrToLower(file->GetFullName());
     size_t iHash;
 
     // Add to existing dependencies if it's not there

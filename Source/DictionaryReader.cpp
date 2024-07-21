@@ -25,7 +25,7 @@
 // Fix filename if it's improper
 static void FixFilename(Str_t &strFilename) {
   // Forward slashes are only in SSR
-  if (strFilename.find('/') != Str_t::npos) {
+  if (strFilename.find('/') != NULL_POS) {
     _iFlags |= SCAN_SSR;
   }
 
@@ -114,8 +114,7 @@ static void AddExtrasWithTEX(const Str_t &strTextureFile) {
   FixFilename(strBaseTex);
 
   // Check if the file already exists in the list of dependencies
-  Str_t strCheckTex = strBaseTex;
-  ToLower(strCheckTex);
+  Str_t strCheckTex = StrToLower(strBaseTex);
 
   // Proceed only if it's not there
   if (InDepends(strCheckTex)) return;
@@ -141,8 +140,7 @@ static void AddExtrasWithTEX(const Str_t &strTextureFile) {
 // Add a specific file only if it exists and it's not in any lists of dependencies
 static void TryToAddFile(const CPath &strFilename) {
   // Check if the file already exists in the list of dependencies
-  CPath strCheckFile = strFilename;
-  ToLower(strCheckFile);
+  CPath strCheckFile = StrToLower(strFilename);
 
   // Skip if already in there
   if (InDepends(strCheckFile)) return;

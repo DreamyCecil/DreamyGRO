@@ -26,7 +26,7 @@
 #include <ZipLib/ZipFile.h>
 #include <ZipLib/ZipArchiveEntry.h>
 
-Str_t _strRoot = "";
+CPath _strRoot = "";
 Strings_t _aScanFiles;
 Strings_t _aNoCompression;
 CHashArray _aStdDepends;
@@ -64,8 +64,7 @@ bool InFiles(Str_t strFilename) {
 
   // Case insensitive search
   for (it = _aFilesToPack.begin(); it != _aFilesToPack.end(); ++it) {
-    Str_t strInFiles = it->strFile;
-    ToLower(strInFiles);
+    Str_t strInFiles = StrToLower(it->strFile);
 
     if (strInFiles == strFilename) {
       return true;
@@ -97,9 +96,7 @@ bool AddFile(const Str_t &strFilename) {
 
 // Replace MP directories with normal ones
 void ReplaceRevDirs(Str_t &strFilename) {
-  Str_t strCheck = strFilename;
-  ToLower(strCheck);
-
+  Str_t strCheck = StrToLower(strFilename);
   s32 ctChars = 0;
 
   // Remove 'MP' from some directories
@@ -213,18 +210,25 @@ int main(int ctArgs, char *astrArgs[]) {
       // Force the pause to be able to see the output
       _bPauseAtTheEnd = true;
 
+      CPath strFile = aArgs[0];
+
+      // Turn relative path into absolute if running a script with a file nearby
+      if (strFile.IsRelative()) strFile = GetCurrentPath() + strFile;
+      strFile.Normalize();
+
+      // Make sure the file can be opened
+      CFileDevice d(strFile.c_str());
+
+      if (!d.Open(IReadWriteDevice::OM_READONLY)) {
+        throw CMessageException("Cannot open the file!");
+      }
+
       {
         // Verify world file
-        CFileDevice d(aArgs[0].c_str());
-
-        if (!d.Open(IReadWriteDevice::OM_READONLY)) {
-          throw CMessageException("Cannot open the file!");
-        }
-
         CDataStream strm(&d);
         VerifyWorldFile(strm);
 
-        Str_t strRelative = FromFullFilePath(aArgs[0], "Levels");
+        Str_t strRelative = FromFullFilePath(strFile, "Levels");
         AddFile(strRelative); // The world itself should be packed too
       }
 
@@ -305,9 +309,7 @@ int main(int ctArgs, char *astrArgs[]) {
         ICompressionMethod::Ptr pMethod;
 
         // Find extension in the list
-        Str_t strExt = strFile.GetFileExt();
-        ToLower(strExt);
-
+        const Str_t strExt = StrToLower(strFile.GetFileExt());
         Strings_t::const_iterator itStore = std::find(_aNoCompression.begin(), _aNoCompression.end(), strExt);
 
         // Store files of this type
