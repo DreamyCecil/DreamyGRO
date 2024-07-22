@@ -186,7 +186,7 @@ int main(int ctArgs, char *astrArgs[]) {
   std::cout << "DreamyGRO - (c) Dreamy Cecil, 2022-2024\n\n";
 
   if (ctArgs < 2) {
-    std::cout << "Please specify path to a world file or use command line arguments:\n";
+    std::cout << "Please specify a path to any file or use command line arguments:\n";
 
     for (s32 iCmd = 0; iCmd < 7; iCmd++) {
       std::cout << "  " << _astrArgDesc[iCmd] << '\n';

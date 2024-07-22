@@ -27,20 +27,20 @@
 // Argument descriptions
 const char *_astrArgDesc[] = {
 #if _DREAMY_UNIX
-  ARG_ROOT   " : Root directory of some classic Serious Sam game (e.g. \"-r /usr/games/SeriousSam/\")",
+  ARG_ROOT   " : Root directory of some classic Serious Sam game (e.g. \"" ARG_ROOT " /usr/games/SeriousSam/\")",
 #else
-  ARG_ROOT   " : Root directory of some classic Serious Sam game (e.g. \"-r C:/SeriousSam/\")",
+  ARG_ROOT   " : Root directory of some classic Serious Sam game (e.g. \"" ARG_ROOT " C:/SeriousSam/\")",
 #endif
-  ARG_OUTPUT " : Output GRO file. Can be an absolute path or relative to the root directory (e.g. \"-o MyMap.gro\")",
-  ARG_WORLD  " : Scans dictionary of this WLD file and adds all dependencies in the list (e.g. \"-w Levels/MyLevel.wld\")",
-  ARG_STORE  " : Don't compress files of a certain type when packing them (e.g. \"-s wld\" or \"-s .ogg\")",
-  ARG_DEPEND " : Ignore certain resources or entire GRO archives (e.g. \"-d MyResources.gro\" or \"-d Texture.tex\")",
-  ARG_FLAGS  " : Set certain behavior flags (e.g. \"-f dep\"):"
-  "\n    ssr - mark world(s) as being from Serious Sam Revolution (detects automatically, this is optional)"
+  ARG_OUTPUT " : Output GRO file. Can be an absolute path or relative to the root directory (e.g. \"" ARG_OUTPUT " MyMap.gro\")",
+  ARG_SCAN   " : Includes this file for scanning and adds its dependencies (e.g. \"" ARG_SCAN " Levels/MyLevel.wld\" or \"" ARG_SCAN " Bin/MyEntities.dll\")",
+  ARG_STORE  " : Don't compress files of a certain type when packing them (e.g. \"" ARG_STORE " wld\" or \"" ARG_STORE " .ogg\")",
+  ARG_DEPEND " : Ignore certain resources or entire GRO archives (e.g. \"" ARG_DEPEND " MyResources.gro\" or \"" ARG_DEPEND " Texture.tex\")",
+  ARG_FLAGS  " : Set certain behavior flags (e.g. \"" ARG_FLAGS " dep\"):"
+  "\n    ssr - mark file(s) as being from Serious Sam Revolution (detects automatically from WLD files)"
   "\n    ini - include INI configs alongside their respective MDL files (to share between mappers)"
   "\n    ogg - check for existence of OGG files if can't find MP3 files (mostly for The First Encounter)"
-  "\n    dep - display list of dependencies of world files without packing anything into the GRO"
-  "\n    gro - automatically detect GRO files from certain games instead of adding them manually via \"-d\"",
+  "\n    dep - display a list of dependencies of included files without packing anything into a GRO"
+  "\n    gro - automatically detect GRO files from certain games instead of adding them manually via \"" ARG_DEPEND "\"",
   ARG_PAUSE  " : Pause program execution before closing the console application to be able to see the output",
 };
 
@@ -85,20 +85,20 @@ static void ParseOutput(Strings_t::const_iterator &it, const Strings_t &aArgs) {
   ++it;
 };
 
-static void ParseWorld(Strings_t::const_iterator &it, const Strings_t &aArgs) {
+static void ParseInclude(Strings_t::const_iterator &it, const Strings_t &aArgs) {
   // Get next argument immediately
   Strings_t::const_iterator itNext = it;
 
-  // No world path
+  // No path
   if (itNext == aArgs.end()) {
-    CMessageException::Throw("Expected a path to a world file after '%s'!", ARG_WORLD);
+    CMessageException::Throw("Expected a path to a file after '%s'!", ARG_SCAN);
   }
 
-  // Add relative path to the world
-  Str_t strWorld = *itNext;
+  // Add relative path to the file
+  Str_t strFile = *itNext;
 
-  _aScanFiles.push_back(strWorld);
-  AddFile(strWorld);
+  _aScanFiles.push_back(strFile);
+  AddFile(strFile);
 
   ++it;
 };
@@ -182,8 +182,8 @@ void ParseArguments(Strings_t &aArgs) {
     } else if (str == ARG_OUTPUT) {
       ParseOutput(it, aArgs);
 
-    } else if (str == ARG_WORLD) {
-      ParseWorld(it, aArgs);
+    } else if (str == ARG_SCAN) {
+      ParseInclude(it, aArgs);
 
     } else if (str == ARG_STORE) {
       ParseStoreFile(it, aArgs);
@@ -304,7 +304,7 @@ static size_t DetermineRootDir(const CPath &strFile, const CPath &strDefaultFold
 // Prompt the user if opening individual files
 static void ManualSetup(const CPath &strFile) {
   // Only show dependencies
-  if (ConsoleYN("Show world dependencies instead of packing?", false)) {
+  if (ConsoleYN("Display dependencies instead of packing?", false)) {
     _iFlags |= SCAN_DEP;
     return;
   }

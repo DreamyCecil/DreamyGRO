@@ -27,9 +27,9 @@
 // Command line arguments
 #define ARG_ROOT   "-r" // Root directory of some Sam game; scans based on where the WLD file is if not defined
 #define ARG_OUTPUT "-o" // Output GRO file; can be an absolute path or relative to the root directory
-#define ARG_WORLD  "-w" // Scans dictionary of this WLD file and adds all dependencies in the list
+#define ARG_SCAN   "-i" // Includes this file for scanning and adds all of the found dependencies in the list
 #define ARG_STORE  "-s" // Don't compress files of a certain type when packing them
-#define ARG_DEPEND "-d" // Don't include files in GRO specified as dependencies or files within other GRO files
+#define ARG_DEPEND "-d" // Don't include files in the final GRO specified as dependencies or any files within other GRO files
 #define ARG_FLAGS  "-f" // Set certain behavior flags (see EPackerFlags definition)
 #define ARG_PAUSE  "-p" // Pause program execution before closing the console application
 
