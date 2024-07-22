@@ -223,13 +223,21 @@ int main(int ctArgs, char *astrArgs[]) {
         throw CMessageException("Cannot open the file!");
       }
 
-      {
+      const Str_t strCheckExt = StrToLower(strFile.GetFileExt());
+
+      if (strCheckExt == ".wld") {
         // Verify world file
         CDataStream strm(&d);
         VerifyWorldFile(strm);
 
         Str_t strRelative = FromFullFilePath(strFile, "Levels");
         AddFile(strRelative); // The world itself should be packed too
+
+      } else if (strCheckExt == ".dll") {
+        FromFullFilePath(strFile, "Bin");
+
+      } else {
+        FromFullFilePath(strFile, "");
       }
 
     // Parse command line arguments
@@ -256,7 +264,13 @@ int main(int ctArgs, char *astrArgs[]) {
 
       std::cout << "\nExtra dependencies for '" << strFile << "':\n";
 
-      ScanWorld(strFile);
+      const Str_t strCheckExt = StrToLower(strFile.GetFileExt());
+
+      if (strCheckExt == ".wld") {
+        ScanWorld(strFile);
+      } else {
+        ScanAnyFile(strFile, strCheckExt == ".dll");
+      }
     }
 
   } catch (CMessageException &ex) {

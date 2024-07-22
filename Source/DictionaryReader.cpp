@@ -22,6 +22,25 @@
 #include "Main.h"
 #include "DictionaryReader.h"
 
+#if !_DREAMY_UNIX
+  #define WIN32_LEAN_AND_MEAN
+  #include <windows.h>
+
+  // Try to get offset of a section that's right after ".text" inside an executable file
+  static size_t GetSecondSectionOffset(const c8 *hModule) {
+    PIMAGE_DOS_HEADER pDOSHeader = (PIMAGE_DOS_HEADER)hModule;
+    PIMAGE_NT_HEADERS pNTHeader = (PIMAGE_NT_HEADERS)((ULONG)pDOSHeader + pDOSHeader->e_lfanew);
+    PIMAGE_FILE_HEADER pFileHeader = &pNTHeader->FileHeader;
+    PIMAGE_SECTION_HEADER aSections = IMAGE_FIRST_SECTION(pNTHeader);
+
+    // Not enough sections
+    if (pFileHeader->NumberOfSections < 2) return NULL_POS;
+
+    PIMAGE_SECTION_HEADER pAfterText = aSections + 1;
+    return pAfterText->VirtualAddress;
+  };
+#endif
+
 // Fix filename if it's improper
 static void FixFilename(Str_t &strFilename) {
   // Forward slashes are only in SSR
@@ -310,6 +329,106 @@ void ScanWorld(const CPath &strWorld) {
 
   // Entity resources dictionary
   ScanWorldDictionary(strm);
+
+  d.Close();
+
+  // No dependencies have been added
+  if (_ctFiles == ctLastFiles) {
+    std::cout << "No dependencies\n";
+  }
+};
+
+// Scan any file for dependencies
+void ScanAnyFile(const CPath &strFile, bool bLibrary) {
+  CFileDevice d((_strRoot + strFile).c_str());
+
+  if (!d.Open(IReadWriteDevice::OM_READONLY)) {
+    throw CMessageException("Cannot open the file!");
+  }
+
+  CDataStream strm(&d);
+  size_t ctLastFiles = _ctFiles;
+
+#if !_DREAMY_UNIX
+  // Scan a library file to skip through bytes that don't have any strings
+  if (bLibrary) {
+    CByteArray aDLL = strm.Read(d.Size());
+    d.Reset();
+    strm.ResetStatus();
+
+    const size_t iPosAfterText = GetSecondSectionOffset(aDLL.ConstData());
+
+    if (iPosAfterText != NULL_POS) {
+      strm.Seek(iPosAfterText);
+    }
+  }
+#endif
+
+  // Possible chunks
+  const u32 iDFNM = *reinterpret_cast<const u32 *>("DFNM");
+  const u32 iEFNM = *reinterpret_cast<const u32 *>("EFNM");
+  const u32 iTFNM = *reinterpret_cast<const u32 *>("TFNM");
+
+  c8 aReadChunk[4];
+
+  while (!strm.AtEnd()) {
+    // Try reading a chunk
+    if (strm.Peek(aReadChunk, 4) != 4) break;
+
+    const u32 iChunk = *reinterpret_cast<const u32 *>(aReadChunk);
+    Str_t strFilename = "";
+
+    // Filename inside a data file
+    if (iChunk == iDFNM) {
+      strm.Skip(4);
+
+      u32 iSize = 0;
+      strm.Peek(&iSize, 4);
+
+      // Make sure that's it's not too long
+      if (iSize < 254) {
+        strm >> strFilename;
+      }
+
+    // Filename inside an executable file
+    } else if (iChunk == iEFNM) {
+      strm.Skip(4);
+
+      while (!strm.AtEnd()) {
+        c8 ch;
+        size_t iRead = strm.Read(&ch, 1);
+
+        // Until either end
+        if (iRead != 1 || ch == '\0') break;
+
+        // Add the character
+        strFilename += ch;
+      }
+
+    // Filename inside a text file
+    } else if (iChunk == iTFNM) {
+      strm.Skip(5); // Skip extra space
+
+      while (!strm.AtEnd()) {
+        c8 ch;
+        size_t iRead = strm.Read(&ch, 1);
+
+        // Until either end
+        if (iRead != 1 || ch == '\n' || ch == '\r'  || ch == '\0' || strFilename.length() >= 254) break;
+
+        // Add the character
+        strFilename += ch;
+      }
+    }
+
+    if (strFilename != "") {
+      FixFilename(strFilename);
+      TryToAddFile(strFilename);
+    }
+
+    // Move forward
+    strm.Skip(1);
+  }
 
   d.Close();
 

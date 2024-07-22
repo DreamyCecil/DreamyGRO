@@ -27,4 +27,7 @@
 // Scan the world dictionary for dependencies
 void ScanWorld(const CPath &strWorld);
 
+// Scan any file for dependencies
+void ScanAnyFile(const CPath &strFile, bool bLibrary);
+
 #endif
