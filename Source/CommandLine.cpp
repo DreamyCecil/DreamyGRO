@@ -333,7 +333,9 @@ static void ManualSetup(const CPath &strFile) {
   }
 
   // Store the world file
-  if (ConsoleYN("Pack uncompressed world file?", false)) {
+  Str_t strExt = StrToLower(strFile.GetFileExt());
+
+  if (strExt == ".wld" && ConsoleYN("Pack uncompressed world file?", false)) {
     _aNoCompression.push_back(".wld");
   }
 };
