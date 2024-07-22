@@ -29,7 +29,7 @@
   // Try to get offset of a section that's right after ".text" inside an executable file
   static size_t GetSecondSectionOffset(const c8 *hModule) {
     PIMAGE_DOS_HEADER pDOSHeader = (PIMAGE_DOS_HEADER)hModule;
-    PIMAGE_NT_HEADERS pNTHeader = (PIMAGE_NT_HEADERS)((ULONG)pDOSHeader + pDOSHeader->e_lfanew);
+    PIMAGE_NT_HEADERS pNTHeader = (PIMAGE_NT_HEADERS)((size_t)pDOSHeader + pDOSHeader->e_lfanew);
     PIMAGE_FILE_HEADER pFileHeader = &pNTHeader->FileHeader;
     PIMAGE_SECTION_HEADER aSections = IMAGE_FIRST_SECTION(pNTHeader);
 
