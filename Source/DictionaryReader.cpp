@@ -52,11 +52,11 @@ static void FixFilename(Str_t &strFilename) {
   Replace(strFilename, '\\', '/');
 
   Str_t strFixed = "";
-  Str_t::iterator it;
+  Str_t::const_iterator it;
 
   for (it = strFilename.begin(); it != strFilename.end(); ++it) {
     // Get next char
-    Str_t::iterator itNext = it + 1;
+    Str_t::const_iterator itNext = it + 1;
 
     // Double slashes are only in SSR
     if (*it == '/' && *itNext == '/') {
@@ -396,13 +396,14 @@ void ScanAnyFile(const CPath &strFile, bool bLibrary) {
 
       while (!strm.AtEnd()) {
         c8 ch;
-        size_t iRead = strm.Read(&ch, 1);
+        size_t iRead = strm.Peek(&ch, 1);
 
         // Until either end
         if (iRead != 1 || ch == '\0') break;
 
         // Add the character
         strFilename += ch;
+        strm.Skip(1);
       }
 
     // Filename inside a text file
@@ -411,23 +412,26 @@ void ScanAnyFile(const CPath &strFile, bool bLibrary) {
 
       while (!strm.AtEnd()) {
         c8 ch;
-        size_t iRead = strm.Read(&ch, 1);
+        size_t iRead = strm.Peek(&ch, 1);
 
         // Until either end
         if (iRead != 1 || ch == '\n' || ch == '\r'  || ch == '\0' || strFilename.length() >= 254) break;
 
         // Add the character
         strFilename += ch;
+        strm.Skip(1);
       }
     }
 
+    // Add read filename
     if (strFilename != "") {
       FixFilename(strFilename);
       TryToAddFile(strFilename);
-    }
 
-    // Move forward
-    strm.Skip(1);
+    // Otherwise move forward
+    } else {
+      strm.Skip(1);
+    }
   }
 
   d.Close();
