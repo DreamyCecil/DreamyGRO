@@ -34,7 +34,6 @@ using namespace dreamy;
 #include <vector>
 
 typedef std::vector<size_t> CHashArray;
-typedef std::vector<std::ifstream> CFileInputs;
 
 struct ListedFile_t {
   Str_t strFile;

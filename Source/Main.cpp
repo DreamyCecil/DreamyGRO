@@ -292,7 +292,6 @@ int main(int ctArgs, char *astrArgs[]) {
 
       // Create streams for each file
       const size_t ctFiles = _aFilesToPack.size();
-      CFileInputs aFileStreams(ctFiles);
 
       // Go through file dependencies
       for (size_t iFile = 0; iFile < ctFiles; ++iFile) {
@@ -315,7 +314,7 @@ int main(int ctArgs, char *astrArgs[]) {
         }
 
         // Write real file
-        std::ifstream &file = aFileStreams[iFile];
+        std::ifstream file;
         file.open(_strRoot + strFile, std::ios::binary);
 
         // Determine compression method
@@ -332,13 +331,13 @@ int main(int ctArgs, char *astrArgs[]) {
           pMethod = DeflateMethod::Create();
         }
 
-        pEntry->SetCompressionStream(file, pMethod);
+        pEntry->SetCompressionStream(file, pMethod, ZipArchiveEntry::CompressionMode::Immediate);
       }
 
       ZipFile::SaveAndClose(pGro, _strGRO);
 
     } catch (std::runtime_error &err) {
-      std::cout << "Error: " << err.what() << '\n';
+      std::cout << "Error: " << err.what() << " (" << strerror(errno) << ")\n";
 
       Pause();
       return 1;
