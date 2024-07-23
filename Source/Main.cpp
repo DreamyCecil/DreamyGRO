@@ -193,7 +193,7 @@ int main(int ctArgs, char *astrArgs[]) {
   if (ctArgs < 2) {
     std::cout << "Please specify a path to any file or use command line arguments:\n";
 
-    for (s32 iCmd = 0; iCmd < 7; iCmd++) {
+    for (s32 iCmd = 0; iCmd < 8; iCmd++) {
       std::cout << "  " << _astrArgDesc[iCmd] << '\n';
     }
 
@@ -287,16 +287,20 @@ int main(int ctArgs, char *astrArgs[]) {
   // Files that couldn't be packed
   CListedFiles aFailed;
 
-  if (!OnlyDep()) {
+  const size_t ctFiles = _aFilesToPack.size();
+
+  // No dependencies to pack
+  if (ctFiles == 0) {
+    std::cout << "\nAll files are already in standard dependencies! Nothing else needs to be packed :)\n";
+
+  // Pack all the dependencies
+  } else if (!OnlyDep()) {
     std::cout << "\nPacking files...\n";
 
     try {
       // Create a new GRO file
       std::remove(_strGRO.c_str());
       ZipArchive::Ptr pGro = ZipFile::Open(_strGRO);
-
-      // Create streams for each file
-      const size_t ctFiles = _aFilesToPack.size();
 
       // Go through file dependencies
       for (size_t iFile = 0; iFile < ctFiles; ++iFile) {
