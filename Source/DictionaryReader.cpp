@@ -163,9 +163,22 @@ static void AddExtrasWithTEX(const Str_t &strRelativeTextureFile) {
 };
 
 // Add a specific file only if it exists and it's not in any lists of dependencies
-static void TryToAddFile(const CPath &strFilename) {
+static void TryToAddFile(CPath strFilename) {
   // Check if the file already exists in the list of dependencies
   CPath strCheckFile = StrToLower(strFilename);
+
+  // Remove mod directory
+  if (EraseMod() && _strMod != "") {
+    const Str_t strModCheck = StrToLower(_strMod);
+    size_t iModDir = strCheckFile.find(strModCheck);
+
+    if (iModDir == 0) {
+      const size_t ctModCheck = strModCheck.length();
+
+      strFilename.erase(0, ctModCheck);
+      strCheckFile.erase(0, ctModCheck);
+    }
+  }
 
   // Skip if already in there
   if (InDepends(strCheckFile)) return;

@@ -63,6 +63,7 @@ enum EPackerFlags {
   SCAN_OGG = (1 << 2), // Pack OGG files if haven't found MP3 files
   SCAN_DEP = (1 << 3), // Only show list of dependencies without packing
   SCAN_GRO = (1 << 4), // Automatically detect GRO files from certain games
+  SCAN_MOD = (1 << 5), // Erase mod directory from paths to dependencies
 };
 
 extern u32 _iFlags; // Packer behavior flags
@@ -73,6 +74,7 @@ inline bool PackINI(void)   { return (_iFlags & SCAN_INI) != 0; };
 inline bool PackOGG(void)   { return (_iFlags & SCAN_OGG) != 0; };
 inline bool OnlyDep(void)   { return (_iFlags & SCAN_DEP) != 0; };
 inline bool DetectGRO(void) { return (_iFlags & SCAN_GRO) != 0; };
+inline bool EraseMod(void)  { return (_iFlags & SCAN_MOD) != 0; };
 
 // Check if the file is already in standard dependencies
 bool InDepends(const Str_t &strFilename, size_t *piHash = nullptr);

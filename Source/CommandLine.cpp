@@ -41,7 +41,8 @@ const char *_astrArgDesc[] = {
   "\n    ini - include INI configs alongside their respective MDL files (to share between mappers)"
   "\n    ogg - check for existence of OGG files if can't find MP3 files (mostly for The First Encounter)"
   "\n    dep - display a list of dependencies of included files without packing anything into a GRO"
-  "\n    gro - automatically detect GRO files from certain games instead of adding them manually via \"" ARG_DEPEND "\"",
+  "\n    gro - automatically detect GRO files from certain games instead of adding them manually via \"" ARG_DEPEND "\""
+  "\n    mod - erase mod directory from paths to dependencies (e.g. packs \"Mods\\MyMod\\Texture1.tex\" as \"Texture1.tex\")",
   ARG_PAUSE  " : Pause program execution before closing the console application to be able to see the output",
 };
 
@@ -189,6 +190,8 @@ static void ParseFlag(Strings_t::const_iterator &it, const Strings_t &aArgs) {
     _iFlags |= SCAN_DEP;
   } else if (strFlag == "gro") {
     _iFlags |= SCAN_GRO;
+  } else if (strFlag == "mod") {
+    _iFlags |= SCAN_MOD;
   }
 };
 
