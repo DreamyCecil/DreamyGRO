@@ -86,9 +86,15 @@ static void AddExtrasWithMDL(const CPath &strFilename) {
 };
 
 // Add extra files with TEX
-static void AddExtrasWithTEX(const Str_t &strTextureFile) {
+static void AddExtrasWithTEX(const Str_t &strRelativeTextureFile) {
+  Str_t strFilename = _strRoot + _strMod + strRelativeTextureFile;
+
+  if (_strMod != "" && !FileExists(_strRoot + _strMod + strRelativeTextureFile)) {
+    strFilename = _strRoot + strRelativeTextureFile;
+  }
+
   // Pack base textures with FX textures
-  CFileDevice dTex(strTextureFile.c_str());
+  CFileDevice dTex(strFilename.c_str());
   if (!dTex.Open(IReadWriteDevice::OM_READONLY)) return;
 
   // Skip texture version and data with 6 values (including two chunks)
@@ -191,7 +197,7 @@ static void TryToAddFile(const CPath &strFilename) {
     AddExtrasWithMDL(strFilename);
 
   } else if (strExt == ".tex") {
-    AddExtrasWithTEX(_strRoot + strCheckFile);
+    AddExtrasWithTEX(strCheckFile);
   }
 };
 
