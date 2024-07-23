@@ -95,10 +95,17 @@ static void ParseInclude(Strings_t::const_iterator &it, const Strings_t &aArgs) 
   }
 
   // Add relative path to the file
-  Str_t strFile = *itNext;
+  CPath strFile = *itNext;
+  Replace(strFile, '\\', '/'); // Fix slashes
 
   _aScanFiles.push_back(strFile);
-  AddFile(strFile);
+
+  // The world itself should be packed too
+  const Str_t strExt = StrToLower(strFile.GetFileExt());
+
+  if (strExt == ".wld") {
+    AddFile(strFile);
+  }
 
   ++it;
 };
@@ -176,25 +183,25 @@ void ParseArguments(Strings_t &aArgs) {
     // Get the string and advance the argument
     const Str_t &str = *(it++);
 
-    if (str == ARG_ROOT) {
+    if (CompareStrings(str, ARG_ROOT)) {
       ParseRoot(it, aArgs);
 
-    } else if (str == ARG_OUTPUT) {
+    } else if (CompareStrings(str, ARG_OUTPUT)) {
       ParseOutput(it, aArgs);
 
-    } else if (str == ARG_SCAN) {
+    } else if (CompareStrings(str, ARG_SCAN)) {
       ParseInclude(it, aArgs);
 
-    } else if (str == ARG_STORE) {
+    } else if (CompareStrings(str, ARG_STORE)) {
       ParseStoreFile(it, aArgs);
 
-    } else if (str == ARG_DEPEND) {
+    } else if (CompareStrings(str, ARG_DEPEND)) {
       ParseDependency(astrDependencies, it, aArgs);
 
-    } else if (str == ARG_FLAGS) {
+    } else if (CompareStrings(str, ARG_FLAGS)) {
       ParseFlag(it, aArgs);
 
-    } else if (str == ARG_PAUSE) {
+    } else if (CompareStrings(str, ARG_PAUSE)) {
       // Pause at the end of execution
       _bPauseAtTheEnd = true;
 
@@ -264,41 +271,56 @@ void ParseArguments(Strings_t &aArgs) {
 static size_t DetermineRootDir(const CPath &strFile, const CPath &strDefaultFolderInRoot, EGameType &eGame) {
   CPath strCurrentDir = strFile;
   size_t iFrom = NULL_POS;
-  size_t iGameDir;
+  size_t iDir;
 
   eGame = GAME_NONE;
 
   // Go up each directory and try to detect the game from there
   do {
-    iGameDir = strCurrentDir.find_last_of("/\\", iFrom);
+    iDir = strCurrentDir.rfind('/', iFrom);
 
     // No more directories
-    if (iGameDir == NULL_POS) break;
+    if (iDir == NULL_POS) break;
 
     // Erase everything after the last slash
-    eGame = DetectGame(strCurrentDir.erase(iGameDir + 1));
+    eGame = DetectGame(strCurrentDir.erase(iDir + 1));
 
     // Exclude last slash from the next search
-    iFrom = iGameDir - 1;
+    iFrom = iDir - 1;
 
   // Go until the game type is determined
   } while (eGame == GAME_NONE);
 
-  // Try to determine root directory from the default path under it as a backup
-  if (eGame == GAME_NONE && strDefaultFolderInRoot != "") {
-    iGameDir = strFile.GoUpUntilDir(strDefaultFolderInRoot);
-
   // Include a slash from detected game directory
-  } else {
-    ++iGameDir;
+  if (eGame != GAME_NONE) {
+    ++iDir;
+
+  // Try to determine root directory from the default path under it as a backup
+  } else if (strDefaultFolderInRoot != "") {
+    iDir = strFile.GoUpUntilDir(strDefaultFolderInRoot);
   }
 
-  if (iGameDir == NULL_POS) {
+  if (iDir == NULL_POS) {
     CMessageException::Throw("You may only open '%s' files from within '%s' folder of a game directory!",
       strFile.GetFileExt().c_str(), strDefaultFolderInRoot.c_str());
   }
 
-  return iGameDir;
+  // Get root directory
+  _strRoot = strFile.substr(0, iDir);
+
+  Str_t strGameType;
+
+  switch (eGame) {
+    case GAME_TFE: strGameType = "(TFE)"; break;
+    case GAME_TSE: strGameType = "(TSE)"; break;
+    case GAME_REV: strGameType = "(SSR)"; break;
+    default: strGameType = "(unknown)";
+  }
+
+  std::cout << "Assumed game directory " << strGameType << ": " << _strRoot << '\n';
+
+  std::cout << '\n';
+  return iDir;
 };
 
 // Prompt the user if opening individual files
@@ -345,18 +367,6 @@ Str_t FromFullFilePath(const CPath &strFile, const CPath &strDefaultFolderInRoot
   // Determine game and root directory
   EGameType eGame;
   size_t iDir = DetermineRootDir(strFile, strDefaultFolderInRoot, eGame);
-  _strRoot = strFile.substr(0, iDir);
-
-  Str_t strGameType;
-
-  switch (eGame) {
-    case GAME_TFE: strGameType = "(TFE)"; break;
-    case GAME_TSE: strGameType = "(TSE)"; break;
-    case GAME_REV: strGameType = "(SSR)"; break;
-    default: strGameType = "(unknown)";
-  }
-
-  std::cout << "Assumed game directory " << strGameType << ": " << _strRoot << "\n\n";
 
   // Setup for individual files
   ManualSetup(strFile);

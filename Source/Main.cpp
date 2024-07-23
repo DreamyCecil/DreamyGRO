@@ -260,7 +260,6 @@ int main(int ctArgs, char *astrArgs[]) {
 
     for (size_t iScanFile = 0; iScanFile < ctScanFiles; ++iScanFile) {
       CPath strFile = _aScanFiles[iScanFile];
-      Replace(strFile, '\\', '/');
 
       std::cout << "\nExtra dependencies for '" << strFile << "':\n";
 
