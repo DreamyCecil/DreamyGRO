@@ -31,6 +31,7 @@ const char *_astrArgDesc[] = {
 #else
   ARG_ROOT   " : Root directory of some classic Serious Sam game (e.g. \"" ARG_ROOT " C:/SeriousSam/\")",
 #endif
+  ARG_MOD    " : Specifies the name of a mod folder where the files are being included from (e.g. \"" ARG_MOD " MyMod\")",
   ARG_OUTPUT " : Output GRO file. Can be an absolute path or relative to the root directory (e.g. \"" ARG_OUTPUT " MyMap.gro\")",
   ARG_SCAN   " : Includes this file for scanning and adds its dependencies (e.g. \"" ARG_SCAN " Levels/MyLevel.wld\" or \"" ARG_SCAN " Bin/MyEntities.dll\")",
   ARG_STORE  " : Don't compress files of a certain type when packing them (e.g. \"" ARG_STORE " wld\" or \"" ARG_STORE " .ogg\")",
@@ -70,6 +71,25 @@ static void ParseRoot(Strings_t::const_iterator &it, const Strings_t &aArgs) {
   if (!_strRoot.PathSeparatorAt(_strRoot.length() - 1)) {
     _strRoot += '/';
   }
+};
+
+static void ParseMod(Strings_t::const_iterator &it, const Strings_t &aArgs) {
+  // Get next argument immediately
+  Strings_t::const_iterator itNext = it;
+
+  // Mod has been already set
+  if (_strMod != "") {
+    CMessageException::Throw("'%s' command cannot be used more than once!", ARG_MOD);
+  }
+
+  // No mod name
+  if (itNext == aArgs.end()) {
+    CMessageException::Throw("Expected a mod name after '%s'!", ARG_MOD);
+  }
+
+  // Set mod path
+  _strMod = "Mods/" + *itNext + "/";
+  ++it;
 };
 
 static void ParseOutput(Strings_t::const_iterator &it, const Strings_t &aArgs) {
@@ -186,6 +206,9 @@ void ParseArguments(Strings_t &aArgs) {
     if (CompareStrings(str, ARG_ROOT)) {
       ParseRoot(it, aArgs);
 
+    } else if (CompareStrings(str, ARG_MOD)) {
+      ParseMod(it, aArgs);
+
     } else if (CompareStrings(str, ARG_OUTPUT)) {
       ParseOutput(it, aArgs);
 
@@ -222,7 +245,12 @@ void ParseArguments(Strings_t &aArgs) {
       CMessageException::Throw("Output GRO file has not been set! Please use '%s <GRO file>'!", ARG_OUTPUT);
     }
 
-    // Relative path to the output GRO
+    // Relative to the mod directory
+    if (_strMod != "") {
+      _strGRO = _strMod + _strGRO;
+    }
+
+    // Relative to the root directory
     if (_strGRO.IsRelative()) {
       _strGRO = _strRoot + _strGRO;
     }
@@ -252,8 +280,11 @@ void ParseArguments(Strings_t &aArgs) {
       continue;
     }
 
-    // Skip if it doesn't exist
-    if (!FileExists(_strRoot + strDepend)) {
+    // Skip if it doesn't exist under either directory
+    const Str_t strUnderMod = _strRoot + _strMod + strDepend;
+    const Str_t strUnderRoot = _strRoot + strDepend;
+
+    if (!FileExists(strUnderMod) && !FileExists(strUnderRoot)) {
       std::cout << '"' << strDepend << "\" does not exist!\n";
       continue;
     }
@@ -319,6 +350,21 @@ static size_t DetermineRootDir(const CPath &strFile, const CPath &strDefaultFold
 
   std::cout << "Assumed game directory " << strGameType << ": " << _strRoot << '\n';
 
+  // If path to the file is under a mod directory right after the root
+  if (CompareStrings(strFile.substr(iDir, 5), "Mods/")) {
+    size_t iModNameEnd = strFile.find('/', iDir + 5);
+
+    // Get mod directory
+    if (iModNameEnd != NULL_POS) {
+      ++iModNameEnd; // Include a slash
+
+      _strMod = strFile.substr(iDir, iModNameEnd - iDir);
+      iDir = iModNameEnd; // Update position to the mod directory
+
+      std::cout << "Assumed mod directory: " << _strMod << '\n';
+    }
+  }
+
   std::cout << '\n';
   return iDir;
 };
@@ -335,10 +381,10 @@ static void ManualSetup(const CPath &strFile) {
   Str_t strCustomGRO = ConsoleInput("Enter output GRO file (blank for automatic): ");
 
   if (strCustomGRO == "") {
-    _strGRO = _strRoot + "DreamyGRO_" + strFile.GetFileName() + ".gro";
+    _strGRO = _strRoot + _strMod + "DreamyGRO_" + strFile.GetFileName() + ".gro";
 
   } else {
-    _strGRO = _strRoot + strCustomGRO;
+    _strGRO = _strRoot + _strMod + strCustomGRO;
 
     // Append extension
     Str_t strCheck = StrToLower(_strGRO.GetFileExt());
@@ -371,7 +417,7 @@ Str_t FromFullFilePath(const CPath &strFile, const CPath &strDefaultFolderInRoot
   // Setup for individual files
   ManualSetup(strFile);
 
-  // Get relative path
+  // Get relative path to the root or the mod
   Str_t strRelative = strFile.substr(iDir);
   _aScanFiles.push_back(strRelative);
 
@@ -442,13 +488,19 @@ void IgnoreGame(EGameType eGame, bool bSetFlagsFromGame) {
 
 // Ignore dependencies from a GRO file
 void IgnoreGRO(const Str_t &strGRO) {
+  Str_t strFullPath = _strRoot + _strMod + strGRO;
+
+  if (!FileExists(strFullPath)) {
+    strFullPath = _strRoot + strGRO;
+  }
+
   // Skip if it doesn't exist
-  if (!FileExists(_strRoot + strGRO)) {
+  if (!FileExists(strFullPath)) {
     std::cout << '"' << strGRO << "\" does not exist!\n";
     return;
   }
 
-  ZipArchive::Ptr pGRO = ZipFile::Open(_strRoot + strGRO);
+  ZipArchive::Ptr pGRO = ZipFile::Open(strFullPath);
 
   for (int i = 0; i < (int)pGRO->GetEntriesCount(); ++i) {
     ZipArchiveEntry::Ptr file = pGRO->GetEntry(i);

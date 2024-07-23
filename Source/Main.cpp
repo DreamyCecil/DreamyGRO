@@ -27,6 +27,7 @@
 #include <ZipLib/ZipArchiveEntry.h>
 
 CPath _strRoot = "";
+CPath _strMod = "";
 Strings_t _aScanFiles;
 Strings_t _aNoCompression;
 CHashArray _aStdDepends;
@@ -142,17 +143,21 @@ void VerifyWorldFile(CDataStream &strmWorld) {
 };
 
 // Check if some listed dependency exists
-static bool CheckFile(Str_t strFile) {
-  // Dependency exists on disk
-  if (FileExists(_strRoot + strFile)) return true;
+// Return values: 0 - doesn't exist; 1 - exists under root; 2 - exists under mod
+static s32 CheckFile(Str_t strFile) {
+  // Dependency exists in the mod directory
+  if (_strMod != "" && FileExists(_strRoot + _strMod + strFile)) return 2;
+
+  // Dependency exists in the root directory
+  if (FileExists(_strRoot + strFile)) return 1;
 
   // Try again for SSR directories
   if (IsRev()) {
     ReplaceRevDirs(strFile);
-    return FileExists(_strRoot + strFile);
+    if (FileExists(_strRoot + strFile)) return 1;
   }
 
-  return false;
+  return 0;
 };
 
 // Display a list of files that cannot be used
@@ -298,8 +303,10 @@ int main(int ctArgs, char *astrArgs[]) {
         const ListedFile_t &listed = _aFilesToPack[iFile];
         CPath strFile = listed.strFile;
 
+        const s32 iCheck = CheckFile(strFile);
+
         // Skip if no file
-        if (!CheckFile(strFile)) {
+        if (iCheck == 0) {
           aFailed.push_back(listed);
           continue;
         }
@@ -315,7 +322,12 @@ int main(int ctArgs, char *astrArgs[]) {
 
         // Write real file
         std::ifstream file;
-        file.open(_strRoot + strFile, std::ios::binary);
+
+        if (iCheck == 2) {
+          file.open(_strRoot + _strMod + strFile, std::ios::binary);
+        } else {
+          file.open(_strRoot + strFile, std::ios::binary);
+        }
 
         // Determine compression method
         ICompressionMethod::Ptr pMethod;
@@ -354,9 +366,10 @@ int main(int ctArgs, char *astrArgs[]) {
     // Go through file dependencies
     for (size_t iFile = 0; iFile < _aFilesToPack.size(); ++iFile) {
       const ListedFile_t &listed = _aFilesToPack[iFile];
+      const s32 iCheck = CheckFile(listed.strFile);
 
       // Skip if no file
-      if (!CheckFile(listed.strFile)) {
+      if (iCheck == 0) {
         aFailed.push_back(listed);
         continue;
       }

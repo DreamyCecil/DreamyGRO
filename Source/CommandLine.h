@@ -26,6 +26,7 @@
 
 // Command line arguments
 #define ARG_ROOT   "-r" // Root directory of some Sam game; scans based on where the WLD file is if not defined
+#define ARG_MOD    "-m" // Specifies the name of a mod folder where the files are being included from
 #define ARG_OUTPUT "-o" // Output GRO file; can be an absolute path or relative to the root directory
 #define ARG_SCAN   "-i" // Includes this file for scanning and adds all of the found dependencies in the list
 #define ARG_STORE  "-s" // Don't compress files of a certain type when packing them

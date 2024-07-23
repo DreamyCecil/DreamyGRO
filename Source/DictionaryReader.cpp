@@ -224,7 +224,7 @@ static void ScanWorldDictionary(CDataStream &strm) {
 
 // Scan the world dictionary for dependencies
 void ScanWorld(const CPath &strWorld) {
-  CFileDevice d((_strRoot + strWorld).c_str());
+  CFileDevice d((_strRoot + _strMod + strWorld).c_str());
 
   if (!d.Open(IReadWriteDevice::OM_READONLY)) {
     throw CMessageException("Cannot open the file!");
@@ -285,18 +285,18 @@ void ScanWorld(const CPath &strWorld) {
     Str_t strExtra = strNoExt + "Tbn.tex";
 
     // Try regular thumbnail
-    if (!FileExists(_strRoot + strExtra)) {
+    if (!FileExists(_strRoot + _strMod + strExtra)) {
       strExtra = strNoExt + ".tbn";
     }
 
-    if (FileExists(_strRoot + strExtra)) {
+    if (FileExists(_strRoot + _strMod + strExtra)) {
       AddFile(strExtra);
     }
 
     // Add VIS file
     strExtra = strNoExt + ".vis";
 
-    if (FileExists(_strRoot + strExtra)) {
+    if (FileExists(_strRoot + _strMod + strExtra)) {
       AddFile(strExtra);
     }
   }
@@ -340,7 +340,7 @@ void ScanWorld(const CPath &strWorld) {
 
 // Scan any file for dependencies
 void ScanAnyFile(const CPath &strFile, bool bLibrary) {
-  CFileDevice d((_strRoot + strFile).c_str());
+  CFileDevice d((_strRoot + _strMod + strFile).c_str());
 
   if (!d.Open(IReadWriteDevice::OM_READONLY)) {
     throw CMessageException("Cannot open the file!");

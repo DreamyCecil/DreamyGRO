@@ -46,6 +46,7 @@ typedef std::vector<ListedFile_t> CListedFiles;
 
 // Preparation
 extern CPath _strRoot;            // Game folder directory
+extern CPath _strMod;             // Extra mod folder relative to the game directory (if packing from there)
 extern Strings_t _aScanFiles;     // List of files to scan for dependencies
 extern Strings_t _aNoCompression; // List of files for packing without compression
 extern CHashArray _aStdDepends;   // List of standard dependencies
