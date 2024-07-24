@@ -243,19 +243,21 @@ void ParseArguments(Strings_t &aArgs) {
   }
 
   if (!OnlyDep()) {
-    // No output path set
+    // Make path to a GRO from the first file to be scanned
     if (_strGRO == "") {
-      CMessageException::Throw("Output GRO file has not been set! Please use '%s <GRO file>'!", ARG_OUTPUT);
-    }
+      const CPath strFile = _aScanFiles[0];
+      _strGRO = _strRoot + _strMod + "DreamyGRO_" + strFile.GetFileName() + ".gro";
 
-    // Relative to the mod directory
-    if (_strMod != "") {
-      _strGRO = _strMod + _strGRO;
-    }
+    } else {
+      // Relative to the mod directory
+      if (_strMod != "") {
+        _strGRO = _strMod + _strGRO;
+      }
 
-    // Relative to the root directory
-    if (_strGRO.IsRelative()) {
-      _strGRO = _strRoot + _strGRO;
+      // Relative to the root directory
+      if (_strGRO.IsRelative()) {
+        _strGRO = _strRoot + _strGRO;
+      }
     }
   }
 
