@@ -237,6 +237,11 @@ void ParseArguments(Strings_t &aArgs) {
     }
   }
 
+  // No files to scan
+  if (_aScanFiles.size() == 0) {
+    CMessageException::Throw("No files have been specified for scanning! Please use '%s <relative path to file>'!", ARG_SCAN);
+  }
+
   // No root path set
   if (_strRoot == "") {
     CMessageException::Throw("Game folder path has not been set! Please use '%s <game folder path>'!", ARG_ROOT);
