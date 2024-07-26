@@ -49,15 +49,15 @@ extern const char *_astrArgDesc[];
 void ParseArguments(Strings_t &aArgs);
 
 // Build parameters from the full path and return file path relative to the root directory
-Str_t FromFullFilePath(const CPath &strFile, const CPath &strDefaultFolderInRoot);
+CString FromFullFilePath(const CString &strFile, const CString &strDefaultFolderInRoot);
 
 // Detect default GRO packages in some directory to determine the game
-EGameType DetectGame(const Str_t &strDir);
+EGameType DetectGame(const CString &strDir);
 
 // Automatically ignore GRO files from a specific game
 void IgnoreGame(EGameType eGame, bool bSetFlagsFromGame);
 
 // Ignore dependencies from a GRO file
-void IgnoreGRO(const Str_t &strGRO);
+void IgnoreGRO(const CString &strGRO);
 
 #endif

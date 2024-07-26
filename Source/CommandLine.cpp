@@ -116,13 +116,13 @@ static void ParseInclude(Strings_t::const_iterator &it, const Strings_t &aArgs) 
   }
 
   // Add relative path to the file
-  CPath strFile = *itNext;
-  Replace(strFile, '\\', '/'); // Fix slashes
+  CString strFile = *itNext;
+  strFile.Replace('\\', '/'); // Fix slashes
 
   _aScanFiles.push_back(strFile);
 
   // The world itself should be packed too
-  const Str_t strExt = StrToLower(strFile.GetFileExt());
+  const CString strExt = strFile.GetFileExt().AsLower();
 
   if (strExt == ".wld") {
     AddFile(strFile);
@@ -141,7 +141,7 @@ static void ParseStoreFile(Strings_t::const_iterator &it, const Strings_t &aArgs
   }
 
   // Get filename filter
-  Str_t strExt = StrToLower(*itNext);
+  CString strExt = (*itNext).AsLower();
   ++it;
 
   // Add a period to the extension
@@ -177,7 +177,7 @@ static void ParseFlag(Strings_t::const_iterator &it, const Strings_t &aArgs) {
   }
 
   // Add specific flag
-  const Str_t strFlag = StrToLower(*itNext);
+  const CString strFlag = (*itNext).AsLower();
   ++it;
 
   if (strFlag == "ssr") {
@@ -204,30 +204,30 @@ void ParseArguments(Strings_t &aArgs) {
 
   while (it != aArgs.end()) {
     // Get the string and advance the argument
-    const Str_t &str = *(it++);
+    const CString &str = *(it++);
 
-    if (CompareStrings(str, ARG_ROOT)) {
+    if (str.Compare(ARG_ROOT)) {
       ParseRoot(it, aArgs);
 
-    } else if (CompareStrings(str, ARG_MOD)) {
+    } else if (str.Compare(ARG_MOD)) {
       ParseMod(it, aArgs);
 
-    } else if (CompareStrings(str, ARG_OUTPUT)) {
+    } else if (str.Compare(ARG_OUTPUT)) {
       ParseOutput(it, aArgs);
 
-    } else if (CompareStrings(str, ARG_SCAN)) {
+    } else if (str.Compare(ARG_SCAN)) {
       ParseInclude(it, aArgs);
 
-    } else if (CompareStrings(str, ARG_STORE)) {
+    } else if (str.Compare(ARG_STORE)) {
       ParseStoreFile(it, aArgs);
 
-    } else if (CompareStrings(str, ARG_DEPEND)) {
+    } else if (str.Compare(ARG_DEPEND)) {
       ParseDependency(astrDependencies, it, aArgs);
 
-    } else if (CompareStrings(str, ARG_FLAGS)) {
+    } else if (str.Compare(ARG_FLAGS)) {
       ParseFlag(it, aArgs);
 
-    } else if (CompareStrings(str, ARG_PAUSE)) {
+    } else if (str.Compare(ARG_PAUSE)) {
       // Pause at the end of execution
       _bPauseAtTheEnd = true;
 
@@ -250,7 +250,7 @@ void ParseArguments(Strings_t &aArgs) {
   if (!OnlyDep()) {
     // Make path to a GRO from the first file to be scanned
     if (_strGRO == "") {
-      const CPath strFile = _aScanFiles[0];
+      const CString strFile = _aScanFiles[0];
       _strGRO = _strRoot + _strMod + "DreamyGRO_" + strFile.GetFileName() + ".gro";
 
     } else {
@@ -279,10 +279,10 @@ void ParseArguments(Strings_t &aArgs) {
 
   // Go through dependencies
   for (size_t iDepend = 0; iDepend < astrDependencies.size(); ++iDepend) {
-    const Str_t &strDepend = astrDependencies[iDepend];
+    const CString &strDepend = astrDependencies[iDepend];
 
     // Copy path for various checks
-    const CPath strCheck = StrToLower(strDepend);
+    const CString strCheck = strDepend.AsLower();
 
     // Scan entire GRO archive
     if (strCheck.GetFileExt() == ".gro") {
@@ -291,8 +291,8 @@ void ParseArguments(Strings_t &aArgs) {
     }
 
     // Skip if it doesn't exist under either directory
-    const Str_t strUnderMod = _strRoot + _strMod + strDepend;
-    const Str_t strUnderRoot = _strRoot + strDepend;
+    const CString strUnderMod = _strRoot + _strMod + strDepend;
+    const CString strUnderRoot = _strRoot + strDepend;
 
     if (!FileExists(strUnderMod) && !FileExists(strUnderRoot)) {
       std::cout << '"' << strDepend << "\" does not exist!\n";
@@ -309,8 +309,8 @@ void ParseArguments(Strings_t &aArgs) {
 };
 
 // Detect root game directory from a full path to the file
-static size_t DetermineRootDir(const CPath &strFile, const CPath &strDefaultFolderInRoot, EGameType &eGame) {
-  CPath strCurrentDir = strFile;
+static size_t DetermineRootDir(const CString &strFile, const CString &strDefaultFolderInRoot, EGameType &eGame) {
+  CString strCurrentDir = strFile;
   size_t iFrom = NULL_POS;
   size_t iDir;
 
@@ -349,7 +349,7 @@ static size_t DetermineRootDir(const CPath &strFile, const CPath &strDefaultFold
   // Get root directory
   _strRoot = strFile.substr(0, iDir);
 
-  Str_t strGameType;
+  CString strGameType;
 
   switch (eGame) {
     case GAME_TFE: strGameType = "(TFE)"; break;
@@ -361,7 +361,9 @@ static size_t DetermineRootDir(const CPath &strFile, const CPath &strDefaultFold
   std::cout << "Assumed game directory " << strGameType << ": " << _strRoot << '\n';
 
   // If path to the file is under a mod directory right after the root
-  if (CompareStrings(strFile.substr(iDir, 5), "Mods/")) {
+  const CString strModsDir = strFile.substr(iDir, 5);
+
+  if (strModsDir.Compare("Mods/")) {
     size_t iModNameEnd = strFile.find('/', iDir + 5);
 
     // Get mod directory
@@ -380,7 +382,7 @@ static size_t DetermineRootDir(const CPath &strFile, const CPath &strDefaultFold
 };
 
 // Prompt the user if opening individual files
-static void ManualSetup(const CPath &strFile) {
+static void ManualSetup(const CString &strFile) {
   // Only show dependencies
   if (ConsoleYN("Display dependencies instead of packing?", false)) {
     _iFlags |= SCAN_DEP;
@@ -388,7 +390,7 @@ static void ManualSetup(const CPath &strFile) {
   }
 
   // Set output GRO
-  Str_t strCustomGRO = ConsoleInput("Enter output GRO file (blank for automatic): ");
+  CString strCustomGRO = ConsoleInput("Enter output GRO file (blank for automatic): ");
 
   if (strCustomGRO == "") {
     _strGRO = _strRoot + _strMod + "DreamyGRO_" + strFile.GetFileName() + ".gro";
@@ -397,7 +399,7 @@ static void ManualSetup(const CPath &strFile) {
     _strGRO = _strRoot + _strMod + strCustomGRO;
 
     // Append extension
-    Str_t strCheck = StrToLower(_strGRO.GetFileExt());
+    CString strCheck = _strGRO.GetFileExt().AsLower();
 
     if (strCheck != ".gro") {
       _strGRO += ".gro";
@@ -411,7 +413,7 @@ static void ManualSetup(const CPath &strFile) {
   }
 
   // Store the world file
-  Str_t strExt = StrToLower(strFile.GetFileExt());
+  CString strExt = strFile.GetFileExt().AsLower();
 
   if (strExt == ".wld" && ConsoleYN("Pack uncompressed world file?", false)) {
     _aNoCompression.push_back(".wld");
@@ -419,7 +421,7 @@ static void ManualSetup(const CPath &strFile) {
 };
 
 // Build parameters from the full path and return file path relative to the root directory
-Str_t FromFullFilePath(const CPath &strFile, const CPath &strDefaultFolderInRoot) {
+CString FromFullFilePath(const CString &strFile, const CString &strDefaultFolderInRoot) {
   // Determine game and root directory
   EGameType eGame;
   size_t iDir = DetermineRootDir(strFile, strDefaultFolderInRoot, eGame);
@@ -428,7 +430,7 @@ Str_t FromFullFilePath(const CPath &strFile, const CPath &strDefaultFolderInRoot
   ManualSetup(strFile);
 
   // Get relative path to the root or the mod
-  Str_t strRelative = strFile.substr(iDir);
+  CString strRelative = strFile.substr(iDir);
   _aScanFiles.push_back(strRelative);
 
   IgnoreGame(eGame, true);
@@ -436,7 +438,7 @@ Str_t FromFullFilePath(const CPath &strFile, const CPath &strDefaultFolderInRoot
 };
 
 // Detect default GRO packages in some directory to determine the game
-EGameType DetectGame(const Str_t &strDir) {
+EGameType DetectGame(const CString &strDir) {
   // TSE 1.05 - 1.10
   if (FileExists(strDir + "SE1_10.gro") || FileExists(strDir + "SE1_00.gro")) {
     return GAME_TSE;
@@ -497,8 +499,8 @@ void IgnoreGame(EGameType eGame, bool bSetFlagsFromGame) {
 };
 
 // Ignore dependencies from a GRO file
-void IgnoreGRO(const Str_t &strGRO) {
-  Str_t strFullPath = _strRoot + _strMod + strGRO;
+void IgnoreGRO(const CString &strGRO) {
+  CString strFullPath = _strRoot + _strMod + strGRO;
 
   if (!FileExists(strFullPath)) {
     strFullPath = _strRoot + strGRO;
@@ -521,7 +523,9 @@ void IgnoreGRO(const Str_t &strGRO) {
     }
 
     // Make hash out of the filename in lowercase
-    const Str_t strCheck = StrToLower(file->GetFullName());
+    CString strCheck = file->GetFullName();
+    strCheck.ToLower();
+
     size_t iHash;
 
     // Add to existing dependencies if it's not there

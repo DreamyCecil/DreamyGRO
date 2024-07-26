@@ -23,9 +23,11 @@
 #define _DREAMYGRO_INCL_MAIN_H
 
 #include <DreamyUtilities/Types/Arrays.hpp>
-#include <DreamyUtilities/Files/Filenames.hpp>
+#include <DreamyUtilities/Types/Exception.hpp>
+#include <DreamyUtilities/IO/Console.hpp>
 #include <DreamyUtilities/IO/DataStream.hpp>
 #include <DreamyUtilities/IO/FileDevice.hpp>
+#include <DreamyUtilities/IO/Files.hpp>
 
 using namespace dreamy;
 
@@ -36,17 +38,17 @@ using namespace dreamy;
 typedef std::vector<size_t> CHashArray;
 
 struct ListedFile_t {
-  Str_t strFile;
+  CString strFile;
   size_t iNumber;
 
-  ListedFile_t(const Str_t &strSet, size_t iSet) : strFile(strSet), iNumber(iSet) {};
+  ListedFile_t(const CString &strSet, size_t iSet) : strFile(strSet), iNumber(iSet) {};
 };
 
 typedef std::vector<ListedFile_t> CListedFiles;
 
 // Preparation
-extern CPath _strRoot;            // Game folder directory
-extern CPath _strMod;             // Extra mod folder relative to the game directory (if packing from there)
+extern CString _strRoot;          // Game folder directory
+extern CString _strMod;           // Extra mod folder relative to the game directory (if packing from there)
 extern Strings_t _aScanFiles;     // List of files to scan for dependencies
 extern Strings_t _aNoCompression; // List of files for packing without compression
 extern CHashArray _aStdDepends;   // List of standard dependencies
@@ -55,7 +57,7 @@ extern CListedFiles _aFilesToPack; // Final list of files to pack
 extern bool _bCountFiles; // Start counting extra dependencies using the counter below
 extern size_t _ctFiles; // Dependency counter
 
-extern CPath _strGRO; // Output GRO archive
+extern CString _strGRO; // Output GRO archive
 
 enum EPackerFlags {
   SCAN_SSR = (1 << 0), // Parsing a world from Serious Sam Revolution
@@ -77,19 +79,16 @@ inline bool DetectGRO(void) { return (_iFlags & SCAN_GRO) != 0; };
 inline bool EraseMod(void)  { return (_iFlags & SCAN_MOD) != 0; };
 
 // Check if the file is already in standard dependencies
-bool InDepends(const Str_t &strFilename, size_t *piHash = nullptr);
+bool InDepends(const CString &strFilename, size_t *piHash = nullptr);
 
 // Check if the file is already added
-bool InFiles(Str_t strFilename);
+bool InFiles(CString strFilename);
 
 // Add new file to the list and return true if it wasn't there before
-bool AddFile(const Str_t &strFilename);
+bool AddFile(const CString &strFilename);
 
 // Replace MP directories with normal ones
-void ReplaceRevDirs(Str_t &strFilename);
-
-// Replace spaces with underscores
-void ReplaceSpaces(Str_t &strFilename);
+void ReplaceRevDirs(CString &strFilename);
 
 // Check if it's a valid world file
 void VerifyWorldFile(CDataStream &strmWorld);

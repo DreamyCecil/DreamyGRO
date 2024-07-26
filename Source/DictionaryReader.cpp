@@ -42,21 +42,21 @@
 #endif
 
 // Fix filename if it's improper
-static void FixFilename(Str_t &strFilename) {
+static void FixFilename(CString &strFilename) {
   // Forward slashes are only in SSR
   if (strFilename.find('/') != NULL_POS) {
     _iFlags |= SCAN_SSR;
   }
 
   // Make consistent slashes
-  Replace(strFilename, '\\', '/');
+  strFilename.Replace('\\', '/');
 
-  Str_t strFixed = "";
-  Str_t::const_iterator it;
+  CString strFixed = "";
+  CString::const_iterator it;
 
   for (it = strFilename.begin(); it != strFilename.end(); ++it) {
     // Get next char
-    Str_t::const_iterator itNext = it + 1;
+    CString::const_iterator itNext = it + 1;
 
     // Double slashes are only in SSR
     if (*it == '/' && *itNext == '/') {
@@ -78,7 +78,7 @@ static void FixFilename(Str_t &strFilename) {
 };
 
 // Add extra files with MDL
-static void AddExtrasWithMDL(const CPath &strFilename) {
+static void AddExtrasWithMDL(const CString &strFilename) {
   // Pack INI configs for models
   if (PackINI()) {
     AddFile(strFilename.RemoveExt() + ".ini");
@@ -86,8 +86,8 @@ static void AddExtrasWithMDL(const CPath &strFilename) {
 };
 
 // Add extra files with TEX
-static void AddExtrasWithTEX(const Str_t &strRelativeTextureFile) {
-  Str_t strFilename = _strRoot + _strMod + strRelativeTextureFile;
+static void AddExtrasWithTEX(const CString &strRelativeTextureFile) {
+  CString strFilename = _strRoot + _strMod + strRelativeTextureFile;
 
   if (_strMod != "" && !FileExists(_strRoot + _strMod + strRelativeTextureFile)) {
     strFilename = _strRoot + strRelativeTextureFile;
@@ -135,11 +135,11 @@ static void AddExtrasWithTEX(const Str_t &strRelativeTextureFile) {
   CByteArray baBaseTex = strmTex.Read(ctChars);
 
   // Read base texture file
-  Str_t strBaseTex = baBaseTex.ConstData();
+  CString strBaseTex = baBaseTex.ConstData();
   FixFilename(strBaseTex);
 
   // Check if the file already exists in the list of dependencies
-  Str_t strCheckTex = StrToLower(strBaseTex);
+  CString strCheckTex = strBaseTex.AsLower();
 
   // Proceed only if it's not there
   if (InDepends(strCheckTex)) return;
@@ -153,7 +153,7 @@ static void AddExtrasWithTEX(const Str_t &strRelativeTextureFile) {
 
     // Try replacing spaces
     if (bAdd) {
-      ReplaceSpaces(strCheckTex);
+      strCheckTex.Replace(' ', '_');
       bAdd = !InDepends(strCheckTex);
     }
   }
@@ -163,13 +163,13 @@ static void AddExtrasWithTEX(const Str_t &strRelativeTextureFile) {
 };
 
 // Add a specific file only if it exists and it's not in any lists of dependencies
-static void TryToAddFile(CPath strFilename) {
+static void TryToAddFile(CString strFilename) {
   // Check if the file already exists in the list of dependencies
-  CPath strCheckFile = StrToLower(strFilename);
+  CString strCheckFile = strFilename.AsLower();
 
   // Remove mod directory
   if (EraseMod() && _strMod != "") {
-    const Str_t strModCheck = StrToLower(_strMod);
+    const CString strModCheck = _strMod.AsLower();
     size_t iModDir = strCheckFile.find(strModCheck);
 
     if (iModDir == 0) {
@@ -197,14 +197,14 @@ static void TryToAddFile(CPath strFilename) {
     if (InDepends(strCheckFile)) return;
 
     // Try replacing spaces
-    ReplaceSpaces(strCheckFile);
+    strCheckFile.Replace(' ', '_');
     if (InDepends(strCheckFile)) return;
   }
 
   // Add filename to the list if it's not there yet
   if (!AddFile(strFilename)) return;
 
-  const Str_t strExt = strCheckFile.GetFileExt();
+  const CString strExt = strCheckFile.GetFileExt();
 
   if (strExt == ".mdl") {
     AddExtrasWithMDL(strFilename);
@@ -227,7 +227,7 @@ static void ScanWorldDictionary(CDataStream &strm) {
     // Read filename
     strm.Expect(CByteArray("DFNM", 4));
 
-    CPath strFilename;
+    CString strFilename;
     strm >> strFilename;
 
     // Skip empty filenames
@@ -242,7 +242,7 @@ static void ScanWorldDictionary(CDataStream &strm) {
 };
 
 // Scan the world dictionary for dependencies
-void ScanWorld(const CPath &strWorld) {
+void ScanWorld(const CString &strWorld) {
   CFileDevice d((_strRoot + _strMod + strWorld).c_str());
 
   if (!d.Open(IReadWriteDevice::OM_READONLY)) {
@@ -255,7 +255,7 @@ void ScanWorld(const CPath &strWorld) {
 
   // Parse world info before parsing the dictionary
   {
-    Str_t strDummy;
+    CString strDummy;
 
     // Skip world info chunk
     strm.Expect(CByteArray("WLIF", 4));
@@ -298,10 +298,10 @@ void ScanWorld(const CPath &strWorld) {
   size_t ctLastFiles = _ctFiles;
 
   {
-    const Str_t strNoExt = strWorld.RemoveExt();
+    const CString strNoExt = strWorld.RemoveExt();
 
     // Add thumbnail texture
-    Str_t strExtra = strNoExt + "Tbn.tex";
+    CString strExtra = strNoExt + "Tbn.tex";
 
     // Try regular thumbnail
     if (!FileExists(_strRoot + _strMod + strExtra)) {
@@ -358,7 +358,7 @@ void ScanWorld(const CPath &strWorld) {
 };
 
 // Scan any file for dependencies
-void ScanAnyFile(const CPath &strFile, bool bLibrary) {
+void ScanAnyFile(const CString &strFile, bool bLibrary) {
   CFileDevice d((_strRoot + _strMod + strFile).c_str());
 
   if (!d.Open(IReadWriteDevice::OM_READONLY)) {
@@ -395,7 +395,7 @@ void ScanAnyFile(const CPath &strFile, bool bLibrary) {
     if (strm.Peek(aReadChunk, 4) != 4) break;
 
     const u32 iChunk = *reinterpret_cast<const u32 *>(aReadChunk);
-    Str_t strFilename = "";
+    CString strFilename = "";
 
     // Filename inside a data file
     if (iChunk == iDFNM) {

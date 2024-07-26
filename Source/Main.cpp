@@ -26,8 +26,11 @@
 #include <ZipLib/ZipFile.h>
 #include <ZipLib/ZipArchiveEntry.h>
 
-CPath _strRoot = "";
-CPath _strMod = "";
+// Implement Dreamy Utilities
+#include <DreamyUtilities/DreamyUtilities.cpp>
+
+CString _strRoot = "";
+CString _strMod = "";
 Strings_t _aScanFiles;
 Strings_t _aNoCompression;
 CHashArray _aStdDepends;
@@ -36,15 +39,15 @@ CListedFiles _aFilesToPack;
 bool _bCountFiles = false;
 size_t _ctFiles = 0;
 
-CPath _strGRO = "";
+CString _strGRO = "";
 
 u32 _iFlags = 0;
 bool _bPauseAtTheEnd = false;
 
 // Check if the file is already in standard dependencies
-bool InDepends(const Str_t &strFilename, size_t *piHash) {
+bool InDepends(const CString &strFilename, size_t *piHash) {
   // Get filename hash
-  std::hash<Str_t> hash;
+  std::hash<CString> hash;
   const size_t iHash = hash(strFilename);
 
   if (piHash != nullptr) {
@@ -58,14 +61,14 @@ bool InDepends(const Str_t &strFilename, size_t *piHash) {
 };
 
 // Check if the file is already added
-bool InFiles(Str_t strFilename) {
-  ToLower(strFilename);
+bool InFiles(CString strFilename) {
+  strFilename.ToLower();
 
   CListedFiles::const_iterator it;
 
   // Case insensitive search
   for (it = _aFilesToPack.begin(); it != _aFilesToPack.end(); ++it) {
-    Str_t strInFiles = StrToLower(it->strFile);
+    CString strInFiles = it->strFile.AsLower();
 
     if (strInFiles == strFilename) {
       return true;
@@ -76,7 +79,7 @@ bool InFiles(Str_t strFilename) {
 };
 
 // Add new file to the list and return true if it wasn't there before
-bool AddFile(const Str_t &strFilename) {
+bool AddFile(const CString &strFilename) {
   if (InFiles(strFilename)) {
     return false;
   }
@@ -96,8 +99,8 @@ bool AddFile(const Str_t &strFilename) {
 };
 
 // Replace MP directories with normal ones
-void ReplaceRevDirs(Str_t &strFilename) {
-  Str_t strCheck = StrToLower(strFilename);
+void ReplaceRevDirs(CString &strFilename) {
+  CString strCheck = strFilename.AsLower();
   s32 ctChars = 0;
 
   // Remove 'MP' from some directories
@@ -122,11 +125,6 @@ void ReplaceRevDirs(Str_t &strFilename) {
   strFilename.erase(ctChars, 2);
 };
 
-// Replace spaces with underscores
-void ReplaceSpaces(Str_t &strFilename) {
-  Replace(strFilename, ' ', '_');
-};
-
 // Check if it's a valid world file
 void VerifyWorldFile(CDataStream &strmWorld) {
   // Parse build version and world chunks to verify that it's a world file
@@ -144,7 +142,7 @@ void VerifyWorldFile(CDataStream &strmWorld) {
 
 // Check if some listed dependency exists
 // Return values: 0 - doesn't exist; 1 - exists under root; 2 - exists under mod
-static s32 CheckFile(Str_t strFile) {
+static s32 CheckFile(CString strFile) {
   // Dependency exists in the mod directory
   if (_strMod != "" && FileExists(_strRoot + _strMod + strFile)) return 2;
 
@@ -161,7 +159,7 @@ static s32 CheckFile(Str_t strFile) {
 };
 
 // Display a list of files that cannot be used
-static bool DisplayFailedFiles(const CListedFiles &aFailed, const Str_t &strError) {
+static bool DisplayFailedFiles(const CListedFiles &aFailed, const CString &strError) {
   if (aFailed.empty()) {
     return false;
   }
@@ -215,7 +213,7 @@ int main(int ctArgs, char *astrArgs[]) {
       // Force the pause to be able to see the output
       _bPauseAtTheEnd = true;
 
-      CPath strFile = aArgs[0];
+      CString strFile = aArgs[0];
 
       // Turn relative path into absolute if running a script with a file nearby
       if (strFile.IsRelative()) strFile = GetCurrentPath() + strFile;
@@ -228,14 +226,14 @@ int main(int ctArgs, char *astrArgs[]) {
         throw CMessageException("Cannot open the file!");
       }
 
-      const Str_t strCheckExt = StrToLower(strFile.GetFileExt());
+      const CString strCheckExt = strFile.GetFileExt().AsLower();
 
       if (strCheckExt == ".wld") {
         // Verify world file
         CDataStream strm(&d);
         VerifyWorldFile(strm);
 
-        Str_t strRelative = FromFullFilePath(strFile, "Levels");
+        CString strRelative = FromFullFilePath(strFile, "Levels");
         AddFile(strRelative); // The world itself should be packed too
 
       } else if (strCheckExt == ".dll") {
@@ -264,11 +262,11 @@ int main(int ctArgs, char *astrArgs[]) {
     }
 
     for (size_t iScanFile = 0; iScanFile < ctScanFiles; ++iScanFile) {
-      CPath strFile = _aScanFiles[iScanFile];
+      CString strFile = _aScanFiles[iScanFile];
 
       std::cout << "\nExtra dependencies for '" << strFile << "':\n";
 
-      const Str_t strCheckExt = StrToLower(strFile.GetFileExt());
+      const CString strCheckExt = strFile.GetFileExt().AsLower();
 
       if (strCheckExt == ".wld") {
         ScanWorld(strFile);
@@ -305,7 +303,7 @@ int main(int ctArgs, char *astrArgs[]) {
       // Go through file dependencies
       for (size_t iFile = 0; iFile < ctFiles; ++iFile) {
         const ListedFile_t &listed = _aFilesToPack[iFile];
-        CPath strFile = listed.strFile;
+        CString strFile = listed.strFile;
 
         const s32 iCheck = CheckFile(strFile);
 
@@ -337,7 +335,7 @@ int main(int ctArgs, char *astrArgs[]) {
         ICompressionMethod::Ptr pMethod;
 
         // Find extension in the list
-        const Str_t strExt = StrToLower(strFile.GetFileExt());
+        const CString strExt = strFile.GetFileExt().AsLower();
         Strings_t::const_iterator itStore = std::find(_aNoCompression.begin(), _aNoCompression.end(), strExt);
 
         // Store files of this type

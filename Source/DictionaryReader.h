@@ -25,9 +25,9 @@
 #include "Main.h"
 
 // Scan the world dictionary for dependencies
-void ScanWorld(const CPath &strWorld);
+void ScanWorld(const CString &strWorld);
 
 // Scan any file for dependencies
-void ScanAnyFile(const CPath &strFile, bool bLibrary);
+void ScanAnyFile(const CString &strFile, bool bLibrary);
 
 #endif
