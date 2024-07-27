@@ -170,9 +170,8 @@ static void TryToAddFile(CString strFilename) {
   // Remove mod directory
   if (EraseMod() && _strMod != "") {
     const CString strModCheck = _strMod.AsLower();
-    size_t iModDir = strCheckFile.find(strModCheck);
 
-    if (iModDir == 0) {
+    if (strCheckFile.StartsWith(strModCheck)) {
       const size_t ctModCheck = strModCheck.length();
 
       strFilename.erase(0, ctModCheck);

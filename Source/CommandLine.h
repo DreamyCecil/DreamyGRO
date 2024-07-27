@@ -24,15 +24,24 @@
 
 #include "Main.h"
 
-// Command line arguments
-#define ARG_ROOT   "-r" // Root directory of some Sam game; scans based on where the WLD file is if not defined
-#define ARG_MOD    "-m" // Specifies the name of a mod folder where the files are being included from
-#define ARG_OUTPUT "-o" // Output GRO file; can be an absolute path or relative to the root directory
-#define ARG_SCAN   "-i" // Includes this file for scanning and adds all of the found dependencies in the list
-#define ARG_STORE  "-s" // Don't compress files of a certain type when packing them
-#define ARG_DEPEND "-d" // Don't include files in the final GRO specified as dependencies or any files within other GRO files
-#define ARG_FLAGS  "-f" // Set certain behavior flags (see EPackerFlags definition)
-#define ARG_PAUSE  "-p" // Pause program execution before closing the console application
+typedef void (*FProcessCmdArg)(Strings_t::const_iterator &it, const Strings_t::const_iterator &itEnd);
+
+struct CmdArg_t {
+  const c8 *strFull; // Full command name, e.g. "root"
+  const c8 *strShort; // Short command name, e.g. "r"
+
+  const c8 *strDescription; // Brief description of the command
+  const c8 *strExample; // Usage example
+
+  FProcessCmdArg pFunc; // Function for processing the command
+};
+
+// Available commands
+extern const CmdArg_t _aCmdArgs[];
+extern const size_t _ctCmdArgs;
+
+// Display help about command line arguments
+void CmdHelp(s32 iCommand);
 
 // Games that can be detected automatically
 enum EGameType {
@@ -42,11 +51,8 @@ enum EGameType {
   GAME_REV,
 };
 
-// Argument descriptions
-extern const char *_astrArgDesc[];
-
 // Parse command line arguments
-void ParseArguments(Strings_t &aArgs);
+bool ParseArguments(Strings_t &aArgs);
 
 // Build parameters from the full path and return file path relative to the root directory
 CString FromFullFilePath(const CString &strFile, const CString &strDefaultFolderInRoot);

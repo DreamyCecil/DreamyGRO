@@ -24,40 +24,50 @@
 #include <ZipLib/ZipFile.h>
 #include <ZipLib/ZipArchiveEntry.h>
 
-// Argument descriptions
-const char *_astrArgDesc[] = {
-#if _DREAMY_UNIX
-  ARG_ROOT   " : Root directory of some classic Serious Sam game (e.g. \"" ARG_ROOT " /usr/games/SeriousSam/\")",
-#else
-  ARG_ROOT   " : Root directory of some classic Serious Sam game (e.g. \"" ARG_ROOT " C:/SeriousSam/\")",
-#endif
-  ARG_MOD    " : Specifies the name of a mod folder where the files are being included from (e.g. \"" ARG_MOD " MyMod\")",
-  ARG_OUTPUT " : Output GRO file. Can be an absolute path or relative to the root directory (e.g. \"" ARG_OUTPUT " MyMap.gro\")",
-  ARG_SCAN   " : Includes this file for scanning and adds its dependencies (e.g. \"" ARG_SCAN " Levels/MyLevel.wld\" or \"" ARG_SCAN " Bin/MyEntities.dll\")",
-  ARG_STORE  " : Don't compress files of a certain type when packing them (e.g. \"" ARG_STORE " wld\" or \"" ARG_STORE " .ogg\")",
-  ARG_DEPEND " : Ignore certain resources or entire GRO archives (e.g. \"" ARG_DEPEND " MyResources.gro\" or \"" ARG_DEPEND " Texture.tex\")",
-  ARG_FLAGS  " : Set certain behavior flags (e.g. \"" ARG_FLAGS " dep\"):"
-  "\n    ssr - mark file(s) as being from Serious Sam Revolution (detects automatically from WLD files)"
-  "\n    ini - include INI configs alongside their respective MDL files (to share between mappers)"
-  "\n    ogg - check for existence of OGG files if can't find MP3 files (mostly for The First Encounter)"
-  "\n    dep - display a list of dependencies of included files without packing anything into a GRO"
-  "\n    gro - automatically detect GRO files from certain games instead of adding them manually via \"" ARG_DEPEND "\""
-  "\n    mod - erase mod directory from paths to dependencies (e.g. packs \"Mods\\MyMod\\Texture1.tex\" as \"Texture1.tex\")",
-  ARG_PAUSE  " : Pause program execution before closing the console application to be able to see the output",
+static void DisplayHelp(Strings_t::const_iterator &it, const Strings_t::const_iterator &itEnd) {
+  // Get next argument immediately
+  Strings_t::const_iterator itNext = it;
+
+  // List all commands if nothing specified
+  if (itNext == itEnd) {
+    CmdHelp(-1);
+
+  } else {
+    s32 iCommand = -1;
+    const CString &strArg = *itNext;
+
+    for (s32 i = 0; i < _ctCmdArgs; ++i) {
+      const CmdArg_t &arg = _aCmdArgs[i];
+
+      if (strArg.Compare(arg.strShort) || strArg.Compare(arg.strFull)) {
+        iCommand = i;
+        break;
+      }
+    }
+
+    if (iCommand != -1) {
+      CmdHelp(iCommand);
+    } else {
+      CMessageException::Throw("Unknown command line argument '%s'", strArg.c_str());
+    }
+  }
+
+  // Terminate the execution
+  throw true;
 };
 
-static void ParseRoot(Strings_t::const_iterator &it, const Strings_t &aArgs) {
+static void ParseRoot(Strings_t::const_iterator &it, const Strings_t::const_iterator &itEnd) {
   // Get next argument immediately
   Strings_t::const_iterator itNext = it;
 
   // Root has been already set
   if (_strRoot != "") {
-    CMessageException::Throw("'%s' command cannot be used more than once!", ARG_ROOT);
+    throw CMessageException("'-r' command cannot be used more than once!");
   }
 
   // No root path
-  if (itNext == aArgs.end()) {
-    CMessageException::Throw("Expected a path to a game folder after '%s'!", ARG_ROOT);
+  if (itNext == itEnd) {
+    throw CMessageException("Expected a path to a game folder after '-r'!");
   }
 
   // Set root path
@@ -74,18 +84,18 @@ static void ParseRoot(Strings_t::const_iterator &it, const Strings_t &aArgs) {
   }
 };
 
-static void ParseMod(Strings_t::const_iterator &it, const Strings_t &aArgs) {
+static void ParseMod(Strings_t::const_iterator &it, const Strings_t::const_iterator &itEnd) {
   // Get next argument immediately
   Strings_t::const_iterator itNext = it;
 
   // Mod has been already set
   if (_strMod != "") {
-    CMessageException::Throw("'%s' command cannot be used more than once!", ARG_MOD);
+    throw CMessageException("'-m' command cannot be used more than once!");
   }
 
   // No mod name
-  if (itNext == aArgs.end()) {
-    CMessageException::Throw("Expected a mod name after '%s'!", ARG_MOD);
+  if (itNext == itEnd) {
+    throw CMessageException("Expected a mod name after '-m'!");
   }
 
   // Set mod path
@@ -93,26 +103,26 @@ static void ParseMod(Strings_t::const_iterator &it, const Strings_t &aArgs) {
   ++it;
 };
 
-static void ParseOutput(Strings_t::const_iterator &it, const Strings_t &aArgs) {
+static void ParseOutput(Strings_t::const_iterator &it, const Strings_t::const_iterator &itEnd) {
   // Get next argument immediately
   Strings_t::const_iterator itNext = it;
 
   // No output path
-  if (itNext == aArgs.end()) {
-    CMessageException::Throw("Expected a path to an output file after '%s'!", ARG_OUTPUT);
+  if (itNext == itEnd) {
+    throw CMessageException("Expected a path to an output file after '-o'!");
   }
 
   _strGRO = *itNext;
   ++it;
 };
 
-static void ParseInclude(Strings_t::const_iterator &it, const Strings_t &aArgs) {
+static void ParseInclude(Strings_t::const_iterator &it, const Strings_t::const_iterator &itEnd) {
   // Get next argument immediately
   Strings_t::const_iterator itNext = it;
 
   // No path
-  if (itNext == aArgs.end()) {
-    CMessageException::Throw("Expected a path to a file after '%s'!", ARG_SCAN);
+  if (itNext == itEnd) {
+    throw CMessageException("Expected a path to a file after '-i'!");
   }
 
   // Add relative path to the file
@@ -131,13 +141,13 @@ static void ParseInclude(Strings_t::const_iterator &it, const Strings_t &aArgs) 
   ++it;
 };
 
-static void ParseStoreFile(Strings_t::const_iterator &it, const Strings_t &aArgs) {
+static void ParseStoreFile(Strings_t::const_iterator &it, const Strings_t::const_iterator &itEnd) {
   // Get next argument immediately
   Strings_t::const_iterator itNext = it;
 
   // No filename filter
-  if (itNext == aArgs.end()) {
-    CMessageException::Throw("Expected a filename filter '%s'!", ARG_STORE);
+  if (itNext == itEnd) {
+    throw CMessageException("Expected a file type after '-s'!");
   }
 
   // Get filename filter
@@ -153,27 +163,30 @@ static void ParseStoreFile(Strings_t::const_iterator &it, const Strings_t &aArgs
   _aNoCompression.push_back(strExt);
 };
 
-static void ParseDependency(Strings_t &astrDependencies, Strings_t::const_iterator &it, const Strings_t &aArgs) {
+// Dependency files and GROs
+static Strings_t _astrDependencies;
+
+static void ParseDependency(Strings_t::const_iterator &it, const Strings_t::const_iterator &itEnd) {
   // Get next argument immediately
   Strings_t::const_iterator itNext = it;
 
   // No file path
-  if (itNext == aArgs.end()) {
-    CMessageException::Throw("Expected a path to a file after '%s'!", ARG_DEPEND);
+  if (itNext == itEnd) {
+    throw CMessageException("Expected a path to a file after '-d'!");
   }
 
   // Add dependency file
-  astrDependencies.push_back(*itNext);
+  _astrDependencies.push_back(*itNext);
   ++it;
 };
 
-static void ParseFlag(Strings_t::const_iterator &it, const Strings_t &aArgs) {
+static void ParseFlag(Strings_t::const_iterator &it, const Strings_t::const_iterator &itEnd) {
   // Get next argument immediately
   Strings_t::const_iterator itNext = it;
 
   // No flags
-  if (itNext == aArgs.end()) {
-    CMessageException::Throw("Expected flags after '%s'!", ARG_FLAGS);
+  if (itNext == itEnd) {
+    throw CMessageException("Expected a flag after '-f'!");
   }
 
   // Add specific flag
@@ -195,56 +208,135 @@ static void ParseFlag(Strings_t::const_iterator &it, const Strings_t &aArgs) {
   }
 };
 
+static void ParsePause(Strings_t::const_iterator &it, const Strings_t::const_iterator &itEnd) {
+  // Pause at the end of execution
+  _bPauseAtTheEnd = true;
+};
+
+const CmdArg_t _aCmdArgs[] {
+  { "help", "h", "Display available command line arguments",
+    "  -h",
+    &DisplayHelp },
+
+  { "root", "r", "Set root directory of a game on Serious Engine 1",
+    "  -r \"/usr/games/SeriousSam/\"\n"
+    "  -r \"C:\\SeriousSam\\\"",
+    &ParseRoot },
+
+  { "mod", "m", "Set name of a mod folder where the files are being included from",
+    "  -m MyMod",
+    &ParseMod },
+
+  { "output", "o", "Set output GRO filename. If full path isn't specified, defaults to the root directory + mod folder",
+    "  -o MyMap.gro",
+    &ParseOutput },
+
+  { "include", "i", "Include a file that will be scanned for extra dependencies",
+    "  -i Levels/MyLevel.wld\n"
+    "  -i Data/Messages/MyLevel.txt\n"
+    "  -i Textures/MyEffectTexture.tex\n"
+    "  -i Bin/MyEntities.dll",
+    &ParseInclude },
+
+  { "store", "s", "Specify file types to store in the archive without any compression",
+    "  -s wld\n"
+    "  -s .ogg",
+    &ParseStoreFile },
+
+  { "depend", "d", "Mark specific resources or entire GRO archives as \"standard\" dependencies that will be skipped during scanning",
+    "  -d MyResources.gro\n"
+    "  -d Textures/MyTexture.tex",
+    &ParseDependency },
+
+  { "flag", "f", "Set certain behavior flags",
+    "  -f dep - display a list of dependencies of included files without packing anything into a GRO\n"
+    "  -f gro - automatically detect GRO files from certain games instead of manually adding them\n"
+    "  -f ini - include INI files alongside their respective MDL files\n"
+    "  -f mod - erase mod directory from paths to dependencies (e.g. packs \"Mods\\MyMod\\Texture1.tex\" as \"Texture1.tex\")\n"
+    "  -f ogg - check for the existence of OGG files if MP3 files cannot be found\n"
+    "  -f ssr - mark files as being from Serious Sam Revolution (detects automatically from WLD files)",
+    &ParseFlag },
+
+  { "pause", "p", "Pause program execution at the very end in order to see the final output",
+    "  -p",
+    &ParsePause },
+};
+
+const size_t _ctCmdArgs = (sizeof(_aCmdArgs) / sizeof(CmdArg_t));
+
+// Display help about command line arguments
+void CmdHelp(s32 iCommand) {
+  // List all of the commands
+  if (iCommand == -1) {
+    for (size_t i = 0; i < _ctCmdArgs; ++i) {
+      const CmdArg_t &arg = _aCmdArgs[i];
+
+      std::cout << "\n--" << arg.strFull << " / -" << arg.strShort << "\n  " << arg.strDescription << '\n';
+    }
+
+    std::cout << "\nType --help <command> to see usage examples for a specific command.\n";
+    return;
+  }
+
+  // Display usage examples for some command
+  const CmdArg_t &arg = _aCmdArgs[iCommand];
+
+  std::cout << "\n--" << arg.strFull << " / -" << arg.strShort << " : " << arg.strDescription
+    << "\n\nExample:\n" << arg.strExample << '\n';
+};
+
 // Parse command line arguments
-void ParseArguments(Strings_t &aArgs) {
-  // Dependency files and GROs
-  Strings_t astrDependencies;
+bool ParseArguments(Strings_t &aArgs) {
+  _astrDependencies.clear();
 
   Strings_t::const_iterator it = aArgs.begin();
+  const size_t ctArgs = aArgs.size();
 
   while (it != aArgs.end()) {
     // Get the string and advance the argument
     const CString &str = *(it++);
 
-    if (str.Compare(ARG_ROOT)) {
-      ParseRoot(it, aArgs);
+    // Starts with one dash
+    const bool bShort = (str[0] == '-' && str[1] != '-');
+    bool bProcessArgument = false;
 
-    } else if (str.Compare(ARG_MOD)) {
-      ParseMod(it, aArgs);
+    for (size_t iArg = 0; iArg < _ctCmdArgs; ++iArg) {
+      const CmdArg_t &arg = _aCmdArgs[iArg];
 
-    } else if (str.Compare(ARG_OUTPUT)) {
-      ParseOutput(it, aArgs);
+      if (bShort) {
+        bProcessArgument = str.StartsWith(CString("-") + arg.strShort);
+      } else {
+        bProcessArgument = str.StartsWith(CString("--") + arg.strFull);
+      }
 
-    } else if (str.Compare(ARG_SCAN)) {
-      ParseInclude(it, aArgs);
+      // Parse the argument
+      if (bProcessArgument) {
+        arg.pFunc(it, aArgs.end());
+        break;
+      }
+    }
 
-    } else if (str.Compare(ARG_STORE)) {
-      ParseStoreFile(it, aArgs);
+    // Couldn't process the argument
+    if (!bProcessArgument) {
+      // Can't parse multiple arguments
+      if (ctArgs > 1) {
+        CMessageException::Throw("Unknown command line argument '%s'", str.c_str());
 
-    } else if (str.Compare(ARG_DEPEND)) {
-      ParseDependency(astrDependencies, it, aArgs);
-
-    } else if (str.Compare(ARG_FLAGS)) {
-      ParseFlag(it, aArgs);
-
-    } else if (str.Compare(ARG_PAUSE)) {
-      // Pause at the end of execution
-      _bPauseAtTheEnd = true;
-
-    // Invalid arguments
-    } else {
-      CMessageException::Throw("Invalid command line argument: '%s'", str.c_str());
+      // One invalid argument must be a path to a file
+      } else {
+        return false;
+      }
     }
   }
 
   // No files to scan
   if (_aScanFiles.size() == 0) {
-    CMessageException::Throw("No files have been specified for scanning! Please use '%s <relative path to file>'!", ARG_SCAN);
+    throw CMessageException("No files have been specified for scanning!");
   }
 
   // No root path set
   if (_strRoot == "") {
-    CMessageException::Throw("Game folder path has not been set! Please use '%s <game folder path>'!", ARG_ROOT);
+    throw CMessageException("Game folder path has not been set!");
   }
 
   if (!OnlyDep()) {
@@ -278,8 +370,8 @@ void ParseArguments(Strings_t &aArgs) {
   }
 
   // Go through dependencies
-  for (size_t iDepend = 0; iDepend < astrDependencies.size(); ++iDepend) {
-    const CString &strDepend = astrDependencies[iDepend];
+  for (size_t iDepend = 0; iDepend < _astrDependencies.size(); ++iDepend) {
+    const CString &strDepend = _astrDependencies[iDepend];
 
     // Copy path for various checks
     const CString strCheck = strDepend.AsLower();
@@ -306,6 +398,8 @@ void ParseArguments(Strings_t &aArgs) {
       _aStdDepends.push_back(iHash);
     }
   }
+
+  return true;
 };
 
 // Detect root game directory from a full path to the file
@@ -361,9 +455,7 @@ static size_t DetermineRootDir(const CString &strFile, const CString &strDefault
   std::cout << "Assumed game directory " << strGameType << ": " << _strRoot << '\n';
 
   // If path to the file is under a mod directory right after the root
-  const CString strModsDir = strFile.substr(iDir, 5);
-
-  if (strModsDir.Compare("Mods/")) {
+  if (strFile.AsLower().StartsWith("mods/")) {
     size_t iModNameEnd = strFile.find('/', iDir + 5);
 
     // Get mod directory

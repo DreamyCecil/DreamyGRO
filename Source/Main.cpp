@@ -104,20 +104,15 @@ void ReplaceRevDirs(CString &strFilename) {
   s32 ctChars = 0;
 
   // Remove 'MP' from some directories
-  if (strCheck.find("modelsmp") == 0
-   || strCheck.find("soundsmp") == 0) {
+  if (strCheck.StartsWith("modelsmp") || strCheck.StartsWith("soundsmp")) {
     ctChars = 6;
-
-  } else if (strCheck.find("musicmp") == 0) {
+  } else if (strCheck.StartsWith("musicmp")) {
     ctChars = 5;
-
-  } else if (strCheck.find("datamp") == 0) {
+  } else if (strCheck.StartsWith("datamp")) {
     ctChars = 4;
-
-  } else if (strCheck.find("texturesmp") == 0) {
+  } else if (strCheck.StartsWith("texturesmp")) {
     ctChars = 8;
-
-  } else if (strCheck.find("animationsmp") == 0) {
+  } else if (strCheck.StartsWith("animationsmp")) {
     ctChars = 10;
   }
 
@@ -186,20 +181,16 @@ static void Pause(void) {
 
 // Entry point
 int main(int ctArgs, char *astrArgs[]) {
-  std::cout << "DreamyGRO - (c) Dreamy Cecil, 2022-2024\n\n";
+  std::cout << "DreamyGRO - (c) Dreamy Cecil, 2022-2024\n";
 
   if (ctArgs < 2) {
-    std::cout << "Please specify a path to any file or use command line arguments:\n";
-
-    for (s32 iCmd = 0; iCmd < 8; iCmd++) {
-      std::cout << "  " << _astrArgDesc[iCmd] << '\n';
-    }
-
+    std::cout << "Please specify a path to any file or use command line arguments. Use --help for more info.\n";
     return 1;
   }
 
   // Get program arguments
   Strings_t aArgs;
+  std::cout << "Command line: ";
 
   for (s32 iArg = 1; iArg < ctArgs; ++iArg) {
     aArgs.push_back(astrArgs[iArg]);
@@ -208,8 +199,11 @@ int main(int ctArgs, char *astrArgs[]) {
   std::cout << "\n";
 
   try {
-    // Parse one file
-    if (aArgs.size() == 1) {
+    // Parse command line arguments
+    bool bParsed = ParseArguments(aArgs);
+
+    // Parse one file if couldn't parse the arguments
+    if (!bParsed) {
       // Force the pause to be able to see the output
       _bPauseAtTheEnd = true;
 
@@ -242,10 +236,6 @@ int main(int ctArgs, char *astrArgs[]) {
       } else {
         FromFullFilePath(strFile, "");
       }
-
-    // Parse command line arguments
-    } else {
-      ParseArguments(aArgs);
     }
 
     std::cout << "Standard dependencies: " << _aStdDepends.size() << '\n';
@@ -274,6 +264,10 @@ int main(int ctArgs, char *astrArgs[]) {
         ScanAnyFile(strFile, strCheckExt == ".dll");
       }
     }
+
+  } catch (bool bExit) {
+    // Terminate application execution
+    if (bExit) return 0;
 
   } catch (CMessageException &ex) {
     std::cout << "Error: " << ex.what() << '\n';
