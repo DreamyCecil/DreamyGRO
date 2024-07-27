@@ -455,7 +455,9 @@ static size_t DetermineRootDir(const CString &strFile, const CString &strDefault
   std::cout << "Assumed game directory " << strGameType << ": " << _strRoot << '\n';
 
   // If path to the file is under a mod directory right after the root
-  if (strFile.AsLower().StartsWith("mods/")) {
+  const CString strModDir = strFile.AsLower().substr(iDir);
+
+  if (strModDir.StartsWith("mods/")) {
     size_t iModNameEnd = strFile.find('/', iDir + 5);
 
     // Get mod directory
