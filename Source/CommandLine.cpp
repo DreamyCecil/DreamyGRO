@@ -356,6 +356,8 @@ bool ParseArguments(Strings_t &aArgs) {
         _strGRO = _strRoot + _strGRO;
       }
     }
+
+    _strGRO.Normalize();
   }
 
   // Add GRO files from games automatically
@@ -499,6 +501,8 @@ static void ManualSetup(const CString &strFile) {
       _strGRO += ".gro";
     }
   }
+
+  _strGRO.Normalize();
 
   // Store music files
   if (ConsoleYN("Pack uncompressed music files?", true)) {
