@@ -181,7 +181,7 @@ static void Pause(void) {
 
 // Entry point
 int main(int ctArgs, char *astrArgs[]) {
-  std::cout << "DreamyGRO - (c) Dreamy Cecil, 2022-2024\n";
+  std::cout << "Dreamy GRO - (c) Dreamy Cecil, 2022-2024\n";
 
   if (ctArgs < 2) {
     std::cout << "Please specify a path to any file or use command line arguments. Use --help for more info.\n";

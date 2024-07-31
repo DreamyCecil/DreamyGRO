@@ -4,9 +4,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 16.0.31605.320
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DreamyGRO", "DreamyGRO.vcxproj", "{E65F63BD-6DA4-4A90-9B53-D5DEA7AEA701}"
-	ProjectSection(ProjectDependencies) = postProject
-		{5C9FD859-DDF9-4510-8397-B329B0AE8C48} = {5C9FD859-DDF9-4510-8397-B329B0AE8C48}
-	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ZipLib", "ZipLib", "{71248ADE-50A7-46F5-B959-6A3C4B8D9914}"
 EndProject
